@@ -5,7 +5,7 @@ package fluence.hash
  * @tparam M type of message for hashing
  * @tparam H type of hashed message
  */
-trait CryptoHash[M, H] {
+trait CryptoHasher[M, H] {
 
   def hash(msg: M): H
 
