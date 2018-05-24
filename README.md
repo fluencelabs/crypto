@@ -21,13 +21,23 @@ Cross-platform hashing and signing algos.
 
 Use a `fluence.crypto.hash.CryptoHashers` to access a hashing algorithm. Currently `Sha1` and `Sha256` are provided.
 
-`fluence.crypto.ecdsa.Ecdsa.signAlgo` is an instance of `SignAlgo` using `ecdsa_secp256k1_sha256`.
+`fluence.crypto.ecdsa.Ecdsa.signAlgo` is an instance of `SignAlgo` with `ecdsa_secp256k1_sha256` under the hood.
 
 ### crypto-cipher
 
+Encryption and decryption algorithms, coded as arrows and bijections. Currently contains `AES` ciphering.
+
 ### crypto-keystore
 
+Provides a JSON format for serializing a keypair, using `codec-circe` for JSON processing.
+
+For Scala on JVM, storing on the disc is implemented with use of `cats-effect`. 
+
 ### crypto-jwt
+
+Simplified JWT implementation, meaning a JSON-serialized header and claim with signature checking.
+
+`codec-circe` is used for JSON encoding/decoding, and `codec-bits` for binary data manipulations.
 
 ## Installation
 
@@ -50,4 +60,4 @@ libraryDependencies ++= Seq(
 
 Fluence is free software; you can redistribute it and/or modify it under the terms of the GNU Affero General Public License v3 (AGPLv3) as published by the Free Software Foundation.
 
-Fluence includes some [external modules](https://github.com/fluencelabs/codec/blob/master/build.sbt) that carry their own licensing.
+Fluence includes some [external modules](https://github.com/fluencelabs/crypto/blob/master/build.sbt) that carry their own licensing.
