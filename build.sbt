@@ -25,7 +25,8 @@ val commons = Seq(
   headerLicense       := Some(License.AGPLv3("2017", organizationName.value)),
   bintrayOrganization := Some("fluencelabs"),
   publishMavenStyle   := true,
-  bintrayRepository   := "releases"
+  bintrayRepository   := "releases",
+  resolvers += Resolver.bintrayRepo("fluencelabs", "releases")
 )
 
 commons
