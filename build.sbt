@@ -31,7 +31,7 @@ val commons = Seq(
 
 commons
 
-val CodecV = "0.0.3"
+val CodecV = "0.0.4"
 
 val CatsEffectV = "1.0.0-RC"
 
