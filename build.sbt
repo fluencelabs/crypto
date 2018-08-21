@@ -14,7 +14,7 @@ val scalaV = scalaVersion := "2.12.5"
 
 val commons = Seq(
   scalaV,
-  version                   := "0.0.1",
+  version                   := "0.0.2",
   fork in Test              := true,
   parallelExecution in Test := false,
   organization              := "one.fluence",
@@ -31,7 +31,7 @@ val commons = Seq(
 
 commons
 
-val CodecV = "0.0.4"
+val CodecV = "0.0.3"
 
 val CatsEffectV = "1.0.0-RC"
 
