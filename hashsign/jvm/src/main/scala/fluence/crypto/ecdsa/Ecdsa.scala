@@ -74,11 +74,12 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
     }
 
   /**
-    * Create pair of keys from known private key.
+    * Creates pair of keys from known secret key.
+    * The public key will be the same each method call with the same secret key.
     * @param sk secret key
     * @return key pair
     */
-  def pairFromPrivate[F[_]: Monad](sk: Secret): EitherT[F, CryptoError, KeyPair] = {
+  def restorePairFromSecret[F[_]: Monad](sk: Secret): EitherT[F, CryptoError, KeyPair] =
     for {
       ecSpec ← EitherT.fromOption(
         Option(ECNamedCurveTable.getParameterSpec(curveType)),
@@ -96,7 +97,6 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
         KeyPair.fromByteVectors(pk, sk.value)
       }("Could not generate KeyPair from private key. Unexpected.")
     } yield keyPair
-  }
 
   def sign[F[_]: Monad](
     keyPair: KeyPair,

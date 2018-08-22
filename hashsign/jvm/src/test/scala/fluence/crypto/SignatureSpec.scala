@@ -127,13 +127,13 @@ class SignatureSpec extends WordSpec with Matchers {
       storage.storeKeyPair(keys).attempt.unsafeRunSync().isLeft shouldBe true
     }
 
-    "restore key pair from private key" in {
+    "restore key pair from secret key" in {
       val algo = Ecdsa.signAlgo
       val testKeys = algo.generateKeyPair.unsafe(None)
 
       val ecdsa = Ecdsa.ecdsa_secp256k1_sha256
 
-      val newKeys = ecdsa.pairFromPrivate(testKeys.secretKey).extract
+      val newKeys = ecdsa.restorePairFromSecret(testKeys.secretKey).extract
 
       testKeys shouldBe newKeys
     }
