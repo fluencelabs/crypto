@@ -73,6 +73,11 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
         } yield keyPair
     }
 
+  /**
+    * Create pair of keys from known private key.
+    * @param sk secret key
+    * @return key pair
+    */
   def pairFromPrivate[F[_]: Monad](sk: Secret): EitherT[F, CryptoError, KeyPair] = {
     for {
       ecSpec ← EitherT.fromOption(
@@ -82,7 +87,9 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
       keyPair ← nonFatalHandling {
         val hex = sk.value.toHex
         val d = new BigInteger(hex, HEXradix)
-        //to re-create public key from private we need to multiply known point G with D (private key)
+        // to re-create public key from private we need to multiply known from curve point G with D (private key)
+        // result will be point Q (public key)
+        // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
         val g = ecSpec.getG
         val q = g.multiply(d)
         val pk = ByteVector(q.getEncoded(true))

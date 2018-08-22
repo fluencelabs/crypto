@@ -33,13 +33,13 @@ commons
 
 val CodecV = "0.0.3"
 
-val CatsEffectV = "1.0.0-RC"
+val CatsEffectV = "1.0.0-RC3"
 
 val SloggingV = "0.6.1"
 
 val ScalatestV = "3.0.+"
 
-val bouncyCastle = "org.bouncycastle"            % "bcprov-jdk15on"        % "1.59"
+val bouncyCastle = "org.bouncycastle" % "bcprov-jdk15on" % "1.59"
 
 enablePlugins(AutomateHeaderPlugin)
 
@@ -158,12 +158,12 @@ lazy val `crypto-jwt` = crossProject(JVMPlatform, JSPlatform)
   .settings(
     commons,
     libraryDependencies ++= Seq(
-      "one.fluence" %%% "codec-circe" % CodecV,
-      "org.scalatest" %%% "scalatest" % ScalatestV % Test
+      "one.fluence"   %%% "codec-circe" % CodecV,
+      "org.scalatest" %%% "scalatest"   % ScalatestV % Test
     )
   )
   .jsSettings(
-    fork in Test := false,
+    fork in Test      := false,
     scalaJSModuleKind := ModuleKind.CommonJSModule
   )
   .enablePlugins(AutomateHeaderPlugin)
