@@ -23,6 +23,7 @@ import java.security.interfaces.ECPrivateKey
 
 import cats.Monad
 import cats.data.EitherT
+import fluence.crypto.KeyPair.Secret
 import fluence.crypto.{KeyPair, _}
 import fluence.crypto.hash.JdkCryptoHasher
 import fluence.crypto.signature.{SignAlgo, SignatureChecker, Signer}
@@ -71,6 +72,31 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
           }("Could not generate KeyPair. Unexpected.")
         } yield keyPair
     }
+
+  /**
+    * Restores pair of keys from the known secret key.
+    * The public key will be the same each method call with the same secret key.
+    * @param sk secret key
+    * @return key pair
+    */
+  def restorePairFromSecret[F[_]: Monad](sk: Secret): EitherT[F, CryptoError, KeyPair] =
+    for {
+      ecSpec ← EitherT.fromOption(
+        Option(ECNamedCurveTable.getParameterSpec(curveType)),
+        CryptoError("Parameter spec for the curve is not available.")
+      )
+      keyPair ← nonFatalHandling {
+        val hex = sk.value.toHex
+        val d = new BigInteger(hex, HEXradix)
+        // to re-create public key from private we need to multiply known from curve point G with D (private key)
+        // result will be point Q (public key)
+        // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
+        val g = ecSpec.getG
+        val q = g.multiply(d)
+        val pk = ByteVector(q.getEncoded(true))
+        KeyPair.fromByteVectors(pk, sk.value)
+      }("Could not generate KeyPair from private key. Unexpected.")
+    } yield keyPair
 
   def sign[F[_]: Monad](
     keyPair: KeyPair,

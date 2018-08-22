@@ -18,6 +18,7 @@
 package fluence.crypto
 
 import java.io.File
+import java.math.BigInteger
 
 import cats.data.EitherT
 import cats.instances.try_._
@@ -31,7 +32,7 @@ import scala.util.{Random, Try}
 
 class SignatureSpec extends WordSpec with Matchers {
 
-  def rndBytes(size: Int) = Random.nextString(10).getBytes
+  def rndBytes(size: Int): Array[Byte] = Random.nextString(10).getBytes
 
   def rndByteVector(size: Int) = ByteVector(rndBytes(size))
 
@@ -124,6 +125,17 @@ class SignatureSpec extends WordSpec with Matchers {
 
       //try to store key into previously created file
       storage.storeKeyPair(keys).attempt.unsafeRunSync().isLeft shouldBe true
+    }
+
+    "restore key pair from secret key" in {
+      val algo = Ecdsa.signAlgo
+      val testKeys = algo.generateKeyPair.unsafe(None)
+
+      val ecdsa = Ecdsa.ecdsa_secp256k1_sha256
+
+      val newKeys = ecdsa.restorePairFromSecret(testKeys.secretKey).extract
+
+      testKeys shouldBe newKeys
     }
   }
 }
