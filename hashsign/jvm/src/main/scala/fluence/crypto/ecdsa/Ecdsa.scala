@@ -74,7 +74,7 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
     }
 
   /**
-    * Restores pair of keys from known secret key.
+    * Restores pair of keys from the known secret key.
     * The public key will be the same each method call with the same secret key.
     * @param sk secret key
     * @return key pair
