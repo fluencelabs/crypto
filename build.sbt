@@ -1,6 +1,6 @@
 import de.heikoseeberger.sbtheader.License
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import sbtcrossproject.crossProject
+import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "crypto"
 
@@ -10,11 +10,11 @@ javaOptions in Test ++= Seq("-ea")
 
 skip in publish := true // Skip root project
 
-val scalaV = scalaVersion := "2.12.5"
+val scalaV = scalaVersion := "2.12.8"
 
 val commons = Seq(
   scalaV,
-  version                   := "0.0.2",
+  version                   := "0.0.3",
   fork in Test              := true,
   parallelExecution in Test := false,
   organization              := "one.fluence",
@@ -31,15 +31,15 @@ val commons = Seq(
 
 commons
 
-val CodecV = "0.0.3"
+val CodecV = "0.0.4"
 
-val CatsEffectV = "1.0.0-RC3"
+val CatsEffectV = "1.2.0"
 
 val SloggingV = "0.6.1"
 
 val ScalatestV = "3.0.+"
 
-val bouncyCastle = "org.bouncycastle" % "bcprov-jdk15on" % "1.59"
+val bouncyCastle = "org.bouncycastle" % "bcprov-jdk15on" % "1.60"
 
 enablePlugins(AutomateHeaderPlugin)
 
