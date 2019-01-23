@@ -1,5 +1,4 @@
 [![Build Status](https://travis-ci.org/fluencelabs/crypto.svg?branch=master)](https://travis-ci.org/fluencelabs/crypto)
-[![Gitter](https://badges.gitter.im/fluencelabs/crypto.svg)](https://gitter.im/fluencelabs/crypto?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 # Сrypto
 
@@ -45,7 +44,7 @@ Simplified JWT implementation, meaning a JSON-serialized header and claim with s
 // Bintray repo is used so far. Migration to Maven Central is planned
 resolvers += Resolver.bintrayRepo("fluencelabs", "releases")
 
-val cryptoV = "0.0.1"
+val cryptoV = "0.0.3"
 
 libraryDependencies ++= Seq(
   "one.fluence" %%% "crypto-core" % cryptoV, // basic types and APIs
