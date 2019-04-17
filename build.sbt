@@ -14,7 +14,7 @@ val scalaV = scalaVersion := "2.12.8"
 
 val commons = Seq(
   scalaV,
-  version                   := "0.0.3",
+  version                   := "0.0.4",
   fork in Test              := true,
   parallelExecution in Test := false,
   organization              := "one.fluence",
@@ -31,7 +31,7 @@ val commons = Seq(
 
 commons
 
-val CodecV = "0.0.4"
+val CodecV = "0.0.5"
 
 val CatsEffectV = "1.2.0"
 
@@ -39,7 +39,7 @@ val SloggingV = "0.6.1"
 
 val ScalatestV = "3.0.+"
 
-val bouncyCastle = "org.bouncycastle" % "bcprov-jdk15on" % "1.60"
+val bouncyCastle = "org.bouncycastle" % "bcprov-jdk15on" % "1.61"
 
 enablePlugins(AutomateHeaderPlugin)
 
@@ -93,7 +93,6 @@ lazy val `crypto-hashsign` = crossProject(JVMPlatform, JSPlatform)
   .settings(
     commons,
     libraryDependencies ++= Seq(
-      "biz.enef"      %%% "slogging"  % SloggingV,
       "org.scalatest" %%% "scalatest" % ScalatestV % Test
     )
   )
@@ -126,6 +125,7 @@ lazy val `crypto-cipher` = crossProject(JVMPlatform, JSPlatform)
   .settings(
     commons,
     libraryDependencies ++= Seq(
+      "biz.enef"      %%% "slogging"  % SloggingV,
       "org.scalatest" %%% "scalatest" % ScalatestV % Test
     )
   )

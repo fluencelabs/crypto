@@ -88,7 +88,7 @@ object CryptoJwt {
 
   private val alphabet = Bases.Alphabets.Base64Url
 
-  private val strVec = BitsCodecs.base64AlphabetToVector(alphabet).swap
+  private val strVec = BitsCodecs.Base64.alphabetToVector(alphabet).swap
 
   val signatureCodec: PureCodec[Signature, String] =
     PureCodec.liftB[Signature, ByteVector](_.sign, Signature(_)) andThen strVec
