@@ -69,7 +69,7 @@ object KeyStore {
     )
 
   // ByteVector to/from String, with the chosen alphabet
-  private val vecToStr = BitsCodecs.base64AlphabetToVector(alphabet).swap
+  private val vecToStr = BitsCodecs.Base64.alphabetToVector(alphabet).swap
 
   implicit val keyPairJsonCodec: PureCodec[KeyPair, Json] =
     PureCodec.liftB[KeyPair, (ByteVector, ByteVector)](
