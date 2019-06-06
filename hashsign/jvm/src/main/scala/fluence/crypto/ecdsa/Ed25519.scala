@@ -49,7 +49,7 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
           random = input.map(new SecureRandom(_)).getOrElse(new SecureRandom())
           keyParameters = new KeyGenerationParameters(random, strength)
           _ = g.init(keyParameters)
-          p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Generated key pair is null."))
+          p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Generated key pair is null"))
           keyPair ← nonFatalHandling {
             val pk = p.getPublic match {
               case pk: Ed25519PublicKeyParameters => pk.getEncoded
@@ -75,7 +75,7 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
       keyPair ← nonFatalHandling {
         val secret = new Ed25519PrivateKeyParameters(sk.bytes, 0)
         KeyPair.fromBytes(secret.generatePublicKey().getEncoded, sk.bytes)
-      }("Could not generate KeyPair from private key. Unexpected.")
+      }("Could not generate KeyPair from private key")
     } yield keyPair
 
   def sign[F[_]: Monad](
@@ -103,7 +103,7 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
         signer.init(true, privKey)
         signer.update(message, 0, message.length)
         signer.generateSignature()
-      }("Cannot sign message.")
+      }("Cannot sign message")
 
     } yield sign
 
@@ -119,7 +119,7 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
         signer.init(false, pubKey)
         signer.update(message, 0, message.length)
         signer.verifySignature(signature)
-      }("Cannot verify message.")
+      }("Cannot verify message")
 
       _ ← EitherT.cond[F](verify, (), CryptoError("Signature is not verified"))
     } yield ()
@@ -128,7 +128,7 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
     nonFatalHandling {
       new Ed25519KeyPairGenerator()
     }(
-      "Cannot get key pair generator."
+      "Cannot get key pair generator"
     )
 }
 

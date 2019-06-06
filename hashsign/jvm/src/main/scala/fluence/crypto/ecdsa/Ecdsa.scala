@@ -64,12 +64,18 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
           }(s"Could not initialize KeyPairGenerator")
           p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Generated key pair is null"))
           keyPair ← nonFatalHandling {
-            //store S number for private key and compressed Q point on curve for public key
-            val pk = ByteVector(p.getPublic.asInstanceOf[ECPublicKey].getQ.getEncoded(true))
-            val bg = p.getPrivate.asInstanceOf[ECPrivateKey].getS
-            val sk = ByteVector.fromValidHex(bg.toString(HEXradix))
+            val pk = p.getPublic match {
+              case pk: ECPublicKey => ByteVector(p.getPublic.asInstanceOf[ECPublicKey].getQ.getEncoded(true))
+              case p => throw new ClassCastException(s"Cannot cast public key (${p.getClass}) to Ed25519PublicKeyParameters")
+            }
+            val sk = p.getPrivate match {
+              case sk: ECPrivateKey =>
+                val bg = p.getPrivate.asInstanceOf[ECPrivateKey].getS
+                ByteVector.fromValidHex(bg.toString(HEXradix))
+              case s => throw new ClassCastException(s"Cannot cast private key (${p.getClass}) to Ed25519PrivateKeyParameters")
+            }
             KeyPair.fromByteVectors(pk, sk)
-          }("Could not generate KeyPair. Unexpected.")
+          }("Could not generate KeyPair")
         } yield keyPair
     }
 

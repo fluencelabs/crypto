@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package flyence.crypto
+package fluence.crypto
 
 import fluence.crypto.facade.ecdsa.{SHA1, SHA256}
 import org.scalatest.{Matchers, WordSpec}

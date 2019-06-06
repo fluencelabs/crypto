@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package flyence.crypto
+package fluence.crypto
 
 import cats.data.EitherT
 import cats.instances.try_._

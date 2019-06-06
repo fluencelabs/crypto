@@ -137,7 +137,7 @@ class Ed25519Spec extends WordSpec with Matchers {
       testKeys shouldBe newKeys
     }
 
-    "ecdsa is work fine with tendermint keys" in {
+    "work with tendermint keys" in {
       /*
         {
           "address": "C08269A8AACD53C3488F16F285821DAC77CF5DEF",
