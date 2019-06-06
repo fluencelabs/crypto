@@ -18,11 +18,10 @@
 package fluence.crypto
 
 import java.io.File
-import java.math.BigInteger
 
 import cats.data.EitherT
 import cats.instances.try_._
-import fluence.crypto.ecdsa.Ecdsa
+import fluence.crypto.ecdsa.Ed25519
 import fluence.crypto.keystore.FileKeyStorage
 import fluence.crypto.signature.Signature
 import org.scalatest.{Matchers, WordSpec}
@@ -30,7 +29,7 @@ import scodec.bits.ByteVector
 
 import scala.util.{Random, Try}
 
-class SignatureSpec extends WordSpec with Matchers {
+class Ed25519Spec extends WordSpec with Matchers {
 
   def rndBytes(size: Int): Array[Byte] = Random.nextString(10).getBytes
 
@@ -47,9 +46,9 @@ class SignatureSpec extends WordSpec with Matchers {
     def isOk: Boolean = et.value.fold(_ ⇒ false, _.isRight)
   }
 
-  "ecdsa algorithm" should {
+  "ed25519 algorithm" should {
     "correct sign and verify data" in {
-      val algorithm = Ecdsa.ecdsa_secp256k1_sha256
+      val algorithm = Ed25519.ed25519(32)
 
       val keys = algorithm.generateKeyPair.unsafe(None)
       val pubKey = keys.publicKey
@@ -67,7 +66,7 @@ class SignatureSpec extends WordSpec with Matchers {
     }
 
     "correctly work with signer and checker" in {
-      val algo = Ecdsa.signAlgo
+      val algo = Ed25519.signAlgo(32)
       val keys = algo.generateKeyPair.unsafe(None)
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)
@@ -82,7 +81,7 @@ class SignatureSpec extends WordSpec with Matchers {
     }
 
     "throw an errors on invalid data" in {
-      val algo = Ecdsa.signAlgo
+      val algo = Ed25519.signAlgo(32)
       val keys = algo.generateKeyPair.unsafe(None)
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)
@@ -104,7 +103,7 @@ class SignatureSpec extends WordSpec with Matchers {
     }
 
     "store and read key from file" in {
-      val algo = Ecdsa.signAlgo
+      val algo = Ed25519.signAlgo(32)
       val keys = algo.generateKeyPair.unsafe(None)
 
       val keyFile = File.createTempFile("test", "")
@@ -128,14 +127,48 @@ class SignatureSpec extends WordSpec with Matchers {
     }
 
     "restore key pair from secret key" in {
-      val algo = Ecdsa.signAlgo
+      val algo = Ed25519.signAlgo(32)
       val testKeys = algo.generateKeyPair.unsafe(None)
 
-      val ecdsa = Ecdsa.ecdsa_secp256k1_sha256
+      val ed25519 = Ed25519.ed25519(32)
 
-      val newKeys = ecdsa.restorePairFromSecret(testKeys.secretKey).extract
+      val newKeys = ed25519.restorePairFromSecret(testKeys.secretKey).extract
 
       testKeys shouldBe newKeys
+    }
+
+    "work with tendermint keys" in {
+      /*
+        {
+          "address": "C08269A8AACD53C3488F16F285821DAC77CF5DEF",
+          "pub_key": {
+            "type": "tendermint/PubKeyEd25519",
+            "value": "FWB5lXZ/TT2132+jXp/8aQzNwISwp9uuFz4z0TXDdxY="
+          },
+          "priv_key": {
+            "type": "tendermint/PrivKeyEd25519",
+            "value": "P6jw9q/Rytdxpv5Wxs1aYA8w82uS0x3CpmS9+GpaMGIVYHmVdn9NPbXfb6Nen/xpDM3AhLCn264XPjPRNcN3Fg=="
+          }
+        }
+       */
+
+      val privKeyBase64 = "P6jw9q/Rytdxpv5Wxs1aYA8w82uS0x3CpmS9+GpaMGIVYHmVdn9NPbXfb6Nen/xpDM3AhLCn264XPjPRNcN3Fg=="
+      val pubKeyBase64 = "FWB5lXZ/TT2132+jXp/8aQzNwISwp9uuFz4z0TXDdxY="
+
+      val privKey = ByteVector.fromBase64Descriptive(privKeyBase64).right.get
+      val pubKey = ByteVector.fromBase64Descriptive(pubKeyBase64).right.get
+
+      val restored = Ed25519.tendermintEd25519
+        .restorePairFromSecret[Try](KeyPair.Secret(privKey.dropRight(32)))
+        .value
+        .get
+        .right
+        .get
+        .publicKey
+        .bytes
+
+      restored shouldBe pubKey.toArray
+      restored shouldBe privKey.drop(32).toArray
     }
   }
 }

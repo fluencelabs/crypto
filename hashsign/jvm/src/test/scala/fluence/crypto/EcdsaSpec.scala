@@ -15,13 +15,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package flyence.crypto
+package fluence.crypto
+
+import java.io.File
 
 import cats.data.EitherT
 import cats.instances.try_._
 import fluence.crypto.ecdsa.Ecdsa
+import fluence.crypto.keystore.FileKeyStorage
 import fluence.crypto.signature.Signature
-import fluence.crypto.{CryptoError, KeyPair}
 import org.scalatest.{Matchers, WordSpec}
 import scodec.bits.ByteVector
 
@@ -29,7 +31,7 @@ import scala.util.{Random, Try}
 
 class EcdsaSpec extends WordSpec with Matchers {
 
-  def rndBytes(size: Int) = Random.nextString(10).getBytes
+  def rndBytes(size: Int): Array[Byte] = Random.nextString(10).getBytes
 
   def rndByteVector(size: Int) = ByteVector(rndBytes(size))
 
@@ -87,13 +89,52 @@ class EcdsaSpec extends WordSpec with Matchers {
 
       val sign = signer.sign(data).extract
 
-      the[CryptoError] thrownBy checker.check(Signature(rndByteVector(10)), data).value.flatMap(_.toTry).get
+      the[CryptoError] thrownBy {
+        checker.check(Signature(rndByteVector(10)), data).value.flatMap(_.toTry).get
+      }
       val invalidChecker = algo.checker(KeyPair.fromByteVectors(rndByteVector(10), rndByteVector(10)).publicKey)
-      the[CryptoError] thrownBy invalidChecker
-        .check(sign, data)
-        .value
-        .flatMap(_.toTry)
-        .get
+      the[CryptoError] thrownBy {
+        invalidChecker
+          .check(sign, data)
+          .value
+          .flatMap(_.toTry)
+          .get
+      }
+    }
+
+    "store and read key from file" in {
+      val algo = Ecdsa.signAlgo
+      val keys = algo.generateKeyPair.unsafe(None)
+
+      val keyFile = File.createTempFile("test", "")
+      if (keyFile.exists()) keyFile.delete()
+      val storage = new FileKeyStorage(keyFile)
+
+      storage.storeKeyPair(keys).unsafeRunSync()
+
+      val keysReadE = storage.readKeyPair
+      val keysRead = keysReadE.unsafeRunSync()
+
+      val signer = algo.signer(keys)
+      val data = rndByteVector(10)
+      val sign = signer.sign(data).extract
+
+      algo.checker(keys.publicKey).check(sign, data).isOk shouldBe true
+      algo.checker(keysRead.publicKey).check(sign, data).isOk shouldBe true
+
+      //try to store key into previously created file
+      storage.storeKeyPair(keys).attempt.unsafeRunSync().isLeft shouldBe true
+    }
+
+    "restore key pair from secret key" in {
+      val algo = Ecdsa.signAlgo
+      val testKeys = algo.generateKeyPair.unsafe(None)
+
+      val ecdsa = Ecdsa.ecdsa_secp256k1_sha256
+
+      val newKeys = ecdsa.restorePairFromSecret(testKeys.secretKey).extract
+
+      testKeys shouldBe newKeys
     }
   }
 }
