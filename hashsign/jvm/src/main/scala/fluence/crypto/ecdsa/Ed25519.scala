@@ -39,14 +39,14 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
 
   import CryptoError.nonFatalHandling
 
-  def generateKeyPair(seed: Option[Array[Byte]] = None): Crypto.KeyPairGenerator =
+  val generateKeyPair: Crypto.KeyPairGenerator =
     new Crypto.Func[Option[Array[Byte]], KeyPair] {
       override def apply[F[_]](
         input: Option[Array[Byte]]
       )(implicit F: Monad[F]): EitherT[F, CryptoError, fluence.crypto.KeyPair] =
         for {
           g ← getKeyPairGenerator
-          random = seed.map(new SecureRandom(_)).getOrElse(new SecureRandom())
+          random = input.map(new SecureRandom(_)).getOrElse(new SecureRandom())
           keyParameters = new KeyGenerationParameters(random, strength)
           _ = g.init(keyParameters)
           p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Could not generate KeyPair. Unexpected."))
@@ -140,7 +140,7 @@ object Ed25519 {
     val algo = ed25519(strength)
     SignAlgo(
       name = "ed25519",
-      generateKeyPair = algo.generateKeyPair(),
+      generateKeyPair = algo.generateKeyPair,
       signer = kp ⇒
         Signer(
           kp.publicKey,
