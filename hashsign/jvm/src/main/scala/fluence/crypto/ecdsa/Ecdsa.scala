@@ -62,7 +62,7 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
           _ ← nonFatalHandling {
             g.initialize(ecSpec, input.map(new SecureRandom(_)).getOrElse(new SecureRandom()))
           }(s"Could not initialize KeyPairGenerator")
-          p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Could not generate KeyPair. Unexpected."))
+          p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Generated key pair is null"))
           keyPair ← nonFatalHandling {
             //store S number for private key and compressed Q point on curve for public key
             val pk = ByteVector(p.getPublic.asInstanceOf[ECPublicKey].getQ.getEncoded(true))

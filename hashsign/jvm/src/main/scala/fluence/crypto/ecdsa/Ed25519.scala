@@ -49,12 +49,18 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
           random = input.map(new SecureRandom(_)).getOrElse(new SecureRandom())
           keyParameters = new KeyGenerationParameters(random, strength)
           _ = g.init(keyParameters)
-          p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Could not generate KeyPair. Unexpected."))
+          p ← EitherT.fromOption(Option(g.generateKeyPair()), CryptoError("Generated key pair is null."))
           keyPair ← nonFatalHandling {
-            val pk = p.getPublic.asInstanceOf[Ed25519PublicKeyParameters].getEncoded
-            val sk = p.getPrivate.asInstanceOf[Ed25519PrivateKeyParameters].getEncoded
+            val pk = p.getPublic match {
+              case pk: Ed25519PublicKeyParameters => pk.getEncoded
+              case p => throw new ClassCastException(s"Cannot cast public key (${p.getClass}) to Ed25519PublicKeyParameters")
+            }
+            val sk = p.getPrivate match {
+              case sk: Ed25519PrivateKeyParameters => sk.getEncoded
+              case s => throw new ClassCastException(s"Cannot cast private key (${p.getClass}) to Ed25519PrivateKeyParameters")
+            }
             KeyPair.fromBytes(pk, sk)
-          }("Could not generate KeyPair. Unexpected.")
+          }("Could not generate KeyPair")
         } yield keyPair
     }
 
