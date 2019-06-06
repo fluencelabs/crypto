@@ -50,7 +50,7 @@ class Ed25519Spec extends WordSpec with Matchers {
     "correct sign and verify data" in {
       val algorithm = Ed25519.ed25519(32)
 
-      val keys = algorithm.generateKeyPair.unsafe(None)
+      val keys = algorithm.generateKeyPair().unsafe(None)
       val pubKey = keys.publicKey
       val data = rndByteVector(10)
       val sign = algorithm.sign[Try](keys, data).extract

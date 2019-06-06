@@ -21,7 +21,7 @@ import java.io.File
 
 import cats.data.EitherT
 import cats.instances.try_._
-import fluence.crypto.ecdsa.Ecdsa
+import fluence.crypto.ecdsa.{Ecdsa, Ed25519}
 import fluence.crypto.keystore.FileKeyStorage
 import fluence.crypto.signature.Signature
 import org.scalatest.{Matchers, WordSpec}
@@ -135,6 +135,40 @@ class EcdsaSpec extends WordSpec with Matchers {
       val newKeys = ecdsa.restorePairFromSecret(testKeys.secretKey).extract
 
       testKeys shouldBe newKeys
+    }
+
+    "ecdsa is work fine with tendermint keys" in {
+      /*
+        {
+          "address": "C08269A8AACD53C3488F16F285821DAC77CF5DEF",
+          "pub_key": {
+            "type": "tendermint/PubKeyEd25519",
+            "value": "FWB5lXZ/TT2132+jXp/8aQzNwISwp9uuFz4z0TXDdxY="
+          },
+          "priv_key": {
+            "type": "tendermint/PrivKeyEd25519",
+            "value": "P6jw9q/Rytdxpv5Wxs1aYA8w82uS0x3CpmS9+GpaMGIVYHmVdn9NPbXfb6Nen/xpDM3AhLCn264XPjPRNcN3Fg=="
+          }
+        }
+       */
+
+      val privKeyBase64 = "P6jw9q/Rytdxpv5Wxs1aYA8w82uS0x3CpmS9+GpaMGIVYHmVdn9NPbXfb6Nen/xpDM3AhLCn264XPjPRNcN3Fg=="
+      val pubKeyBase64 = "FWB5lXZ/TT2132+jXp/8aQzNwISwp9uuFz4z0TXDdxY="
+
+      val privKey = ByteVector.fromBase64Descriptive(privKeyBase64).right.get
+      val pubKey = ByteVector.fromBase64Descriptive(pubKeyBase64).right.get
+
+      val restored = Ed25519.tendermintEd25519
+        .restorePairFromSecret[Try](KeyPair.Secret(privKey.dropRight(32)))
+        .value
+        .get
+        .right
+        .get
+        .publicKey
+        .bytes
+
+      restored shouldBe pubKey.toArray
+      restored shouldBe privKey.drop(32).toArray
     }
   }
 }
