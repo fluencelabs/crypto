@@ -21,7 +21,7 @@ import java.io.File
 
 import cats.data.EitherT
 import cats.instances.try_._
-import fluence.crypto.ecdsa.Ed25519
+import fluence.crypto.eddsa.Ed25519
 import fluence.crypto.keystore.FileKeyStorage
 import fluence.crypto.signature.Signature
 import org.scalatest.{Matchers, WordSpec}

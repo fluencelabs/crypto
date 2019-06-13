@@ -21,7 +21,6 @@ import cats.data.EitherT
 import cats.instances.try_._
 import fluence.crypto.ecdsa.Ecdsa
 import fluence.crypto.signature.Signature
-import fluence.crypto.{CryptoError, KeyPair}
 import org.scalatest.{Matchers, WordSpec}
 import scodec.bits.ByteVector
 
