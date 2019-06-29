@@ -43,7 +43,7 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
         nonFatalHandling {
           val seedJs = input.map(bs ⇒ js.Dynamic.literal(entropy = bs.toJSArray))
           val key = ec.genKeyPair(seedJs)
-          val publicHex = key.getPublic(true, "hex")
+          val publicHex = key.getPublic(compact = true, "hex")
           val secretHex = key.getPrivate("hex")
           val public = ByteVector.fromValidHex(publicHex)
           val secret = ByteVector.fromValidHex(secretHex)
@@ -56,18 +56,9 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
       secret ← nonFatalHandling {
         ec.keyFromPrivate(keyPair.secretKey.value.toHex, "hex")
       }("Cannot get private key from key pair.")
-      hash ← hash(message)
+      hash ← Utils.hashJs(message, hasher)
       signHex ← nonFatalHandling(secret.sign(new Uint8Array(hash)).toDER("hex"))("Cannot sign message")
     } yield Signature(ByteVector.fromValidHex(signHex))
-
-  def hash[F[_]: Monad](message: ByteVector): EitherT[F, CryptoError, js.Array[Byte]] = {
-    val arr = message.toArray
-    hasher
-      .fold(EitherT.pure[F, CryptoError](arr)) { h ⇒
-        h[F](arr)
-      }
-      .map(_.toJSArray)
-  }
 
   def verify[F[_]: Monad](
     pubKey: KeyPair.Public,
@@ -79,7 +70,7 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
         val hex = pubKey.value.toHex
         ec.keyFromPublic(hex, "hex")
       }("Incorrect public key format.")
-      hash ← hash(message)
+      hash ← Utils.hashJs(message, hasher)
       verify ← nonFatalHandling(public.verify(new Uint8Array(hash), signature.sign.toHex))("Cannot verify message.")
       _ ← EitherT.cond[F](verify, (), CryptoError("Signature is not verified"))
     } yield ()
@@ -88,7 +79,7 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
 object Ecdsa {
   val ecdsa_secp256k1_sha256 = new Ecdsa(new EC("secp256k1"), Some(JsCryptoHasher.Sha256))
 
-  val signAlgo: SignAlgo = SignAlgo(
+  val ecdsaSignAlgo: SignAlgo = SignAlgo(
     "ecdsa/secp256k1/sha256/js",
     generateKeyPair = ecdsa_secp256k1_sha256.generateKeyPair,
     signer = kp ⇒

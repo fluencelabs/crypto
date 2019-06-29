@@ -26,7 +26,7 @@ val commons = Seq(
   bintrayOrganization := Some("fluencelabs"),
   publishMavenStyle   := true,
   bintrayRepository   := "releases",
-  resolvers += Resolver.bintrayRepo("fluencelabs", "releases")
+  resolvers ++= Seq(Resolver.bintrayRepo("fluencelabs", "releases"), Resolver.sonatypeRepo("releases"))
 )
 
 commons
@@ -103,8 +103,10 @@ lazy val `crypto-hashsign` = crossProject(JVMPlatform, JSPlatform)
     )
   )
   .jsSettings(
+    libraryDependencies += "io.scalajs" %%% "nodejs" % "0.4.2",
     npmDependencies in Compile ++= Seq(
-      "elliptic" -> "6.4.0"
+      "elliptic" -> "6.4.0",
+      "supercop.js" -> "2.0.1"
     ),
     scalaJSModuleKind in Test := ModuleKind.CommonJSModule,
     //all JavaScript dependencies will be concatenated to a single file *-jsdeps.js
