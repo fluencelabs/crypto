@@ -142,36 +142,36 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
   ): EitherT[F, CryptoError, Unit] =
     for {
       ec ← curveSpec
-      keySpec ← nonFatalHandling(new ECPublicKeySpec(ec.getCurve.decodePoint(publicKey), ec))("Cannot read public key.")
+      keySpec ← nonFatalHandling(new ECPublicKeySpec(ec.getCurve.decodePoint(publicKey), ec))("Cannot read public key")
       keyFactory ← getKeyFactory
       signProvider ← getSignatureProvider
       verify ← nonFatalHandling {
         signProvider.initVerify(keyFactory.generatePublic(keySpec))
         signProvider.update(hasher.map(_.unsafe(message)).getOrElse(message))
         signProvider.verify(signature)
-      }("Cannot verify message.")
+      }("Cannot verify message")
 
       _ ← EitherT.cond[F](verify, (), CryptoError("Signature is not verified"))
     } yield ()
 
   private def curveSpec[F[_]: Monad] =
     nonFatalHandling(ECNamedCurveTable.getParameterSpec(curveType).asInstanceOf[ECParameterSpec])(
-      "Cannot get curve parameters."
+      "Cannot get curve parameters"
     )
 
   private def getKeyPairGenerator[F[_]: Monad] =
     nonFatalHandling(KeyPairGenerator.getInstance(ECDSA, BouncyCastleProvider.PROVIDER_NAME))(
-      "Cannot get key pair generator."
+      "Cannot get key pair generator"
     )
 
   private def getKeyFactory[F[_]: Monad] =
     nonFatalHandling(KeyFactory.getInstance(ECDSA, BouncyCastleProvider.PROVIDER_NAME))(
-      "Cannot get key factory instance."
+      "Cannot get key factory instance"
     )
 
   private def getSignatureProvider[F[_]: Monad] =
     nonFatalHandling(Signature.getInstance(scheme, BouncyCastleProvider.PROVIDER_NAME))(
-      "Cannot get signature instance."
+      "Cannot get signature instance"
     )
 }
 

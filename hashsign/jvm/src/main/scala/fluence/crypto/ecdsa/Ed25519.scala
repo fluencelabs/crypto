@@ -137,8 +137,8 @@ object Ed25519 {
   /**
    * Keys in tendermint are generating with a random seed of 32 bytes
    */
-  val tendermintEd25519 = new Ed25519(256)
-  val tendermintAlgo: SignAlgo = signAlgo(256)
+  val ed25519 = new Ed25519(256)
+  val signAlgo: SignAlgo = signAlgo(256)
 
   def ed25519(strength: Int) = new Ed25519(strength)
 

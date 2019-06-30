@@ -158,7 +158,7 @@ class Ed25519Spec extends WordSpec with Matchers {
       val privKey = ByteVector.fromBase64Descriptive(privKeyBase64).right.get
       val pubKey = ByteVector.fromBase64Descriptive(pubKeyBase64).right.get
 
-      val restored = Ed25519.tendermintEd25519
+      val restored = Ed25519.ed25519
         .restorePairFromSecret[Try](KeyPair.Secret(privKey.dropRight(32)))
         .value
         .get

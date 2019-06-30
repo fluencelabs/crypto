@@ -113,7 +113,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
   ): EitherT[F, CryptoError, Array[Byte]] =
     nonFatalHandling {
       PBEParametersGenerator.PKCS5PasswordToUTF8Bytes(password)
-    }("Cannot init secret key.")
+    }("Cannot init secret key")
 
   /**
    * Setup AES CBC cipher
@@ -132,7 +132,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
       cipher.init(encrypt, params)
 
       cipher
-    }("Cannot setup aes cipher.")
+    }("Cannot setup aes cipher")
   }
 
   private def cipherBytes[F[_]: Monad](
@@ -146,7 +146,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
       val lastBlockLength = cipher.doFinal(buf, outputLength)
       //remove padding
       buf.slice(0, outputLength + lastBlockLength)
-    }("Error in cipher processing.")
+    }("Error in cipher processing")
   }
 
   /**
@@ -176,7 +176,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
       val ivData = data.slice(0, ivSize)
       val encData = data.slice(ivSize, data.length)
       DetachedData(ivData, encData)
-    }("Cannot detach data and IV.")
+    }("Cannot detach data and IV")
   }
 
   private def paramsWithIV[F[_]: Monad](

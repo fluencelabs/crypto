@@ -18,16 +18,15 @@
 package fluence.crypto
 
 import cats.data.EitherT
-import cats.instances.try_._
-import fluence.crypto.ecdsa.Ecdsa
 import fluence.crypto.signature.Signature
 import org.scalatest.{Matchers, WordSpec}
 import scodec.bits.ByteVector
+import cats.instances.try_._
+import fluence.crypto.ed25519.Ed25519
 
 import scala.util.{Random, Try}
 
-class EllipticSpec extends WordSpec with Matchers {
-
+class Ed25519Spec extends WordSpec with Matchers {
   def rndBytes(size: Int): Array[Byte] = Random.nextString(10).getBytes
 
   def rndByteVector(size: Int) = ByteVector(rndBytes(size))
@@ -43,9 +42,9 @@ class EllipticSpec extends WordSpec with Matchers {
     def isOk: Boolean = et.value.fold(_ ⇒ false, _.isRight)
   }
 
-  "ecdsa algorithm" should {
+  "ed25519 algorithm" should {
     "correct sign and verify data" in {
-      val algorithm = Ecdsa.ecdsa_secp256k1_sha256
+      val algorithm = Ed25519.ed25519
 
       val keys = algorithm.generateKeyPair.unsafe(None)
       val pubKey = keys.publicKey
@@ -63,7 +62,7 @@ class EllipticSpec extends WordSpec with Matchers {
     }
 
     "correctly work with signer and checker" in {
-      val algo = Ecdsa.signAlgo
+      val algo = Ed25519.signAlgo
       val keys = algo.generateKeyPair.unsafe(None)
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)
@@ -78,7 +77,7 @@ class EllipticSpec extends WordSpec with Matchers {
     }
 
     "throw an errors on invalid data" in {
-      val algo = Ecdsa.signAlgo
+      val algo = Ed25519.signAlgo
       val keys = algo.generateKeyPair.unsafe(None)
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)

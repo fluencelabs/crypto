@@ -37,6 +37,21 @@ import scala.scalajs.js.typedarray.Uint8Array
 class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
   import CryptoError.nonFatalHandling
 
+  def restoreKeyPair[F[_]](secretKey: KeyPair.Secret)(implicit F: Monad[F]): EitherT[F, CryptoError, KeyPair] = {
+    for {
+      secret <- {
+        nonFatalHandling {
+          val key = ec.keyFromPrivate(secretKey.value.toHex, "hex")
+          val publicHex = key.getPublic(compact = true, "hex")
+          val secretHex = key.getPrivate("hex")
+          val public = ByteVector.fromValidHex(publicHex)
+          val secret = ByteVector.fromValidHex(secretHex)
+          KeyPair.fromByteVectors(public, secret)
+        }("Incorrect secret key format")
+      }
+    } yield secret
+  }
+
   val generateKeyPair: Crypto.KeyPairGenerator =
     new Crypto.Func[Option[Array[Byte]], KeyPair] {
       override def apply[F[_]](input: Option[Array[Byte]])(implicit F: Monad[F]): EitherT[F, CryptoError, KeyPair] =

@@ -86,7 +86,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) {
       //IV also needs to be transformed in byte array
       val byteIv = iv.map(i ⇒ ByteVector.fromValidHex(i.toString))
       byteIv.map(_.toArray ++ crypted.toArray).getOrElse(crypted.toArray)
-    }("Cannot encrypt data.")
+    }("Cannot encrypt data")
   }
 
   private def decryptData[F[_]: Monad](key: Key, base64Data: String, iv: Option[String]) = {
@@ -95,7 +95,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) {
       val cryptOptions = CryptOptions(iv = iv.map(i ⇒ CryptoJS.enc.Hex.parse(i)), padding = pad, mode = mode)
       val dec = aes.decrypt(base64Data, key, cryptOptions)
       ByteVector.fromValidHex(dec.toString)
-    }("Cannot decrypt data.")
+    }("Cannot decrypt data")
   }
 
   /**
@@ -112,7 +112,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) {
       val (ivOp, data) = dataWithParams
       val base64 = ByteVector(data).toBase64
       (ivOp, base64)
-    }("Cannot detach data and IV.")
+    }("Cannot detach data and IV")
   }
 
   /**
@@ -123,7 +123,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) {
       // get raw key from password and salt
       val keyOption = KeyOptions(BITS, iterations = iterationCount, hasher = CryptoJS.algo.SHA256)
       CryptoJS.PBKDF2(new String(password), salt, keyOption)
-    }("Cannot init secret key.")
+    }("Cannot init secret key")
   }
 }
 
