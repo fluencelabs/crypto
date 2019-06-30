@@ -220,7 +220,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
   }
 }
 
-object AesCrypt extends slogging.LazyLogging {
+object AesCrypt {
 
   def build(password: ByteVector, withIV: Boolean, config: AesConfig): Crypto.Cipher[Array[Byte]] = {
     val aes = new AesCrypt(password.toHex.toCharArray, withIV, config)
