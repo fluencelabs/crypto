@@ -63,14 +63,14 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
           val public = ByteVector.fromValidHex(publicHex)
           val secret = ByteVector.fromValidHex(secretHex)
           KeyPair.fromByteVectors(public, secret)
-        }("Failed to generate key pair.")
+        }("Failed to generate key pair")
     }
 
   def sign[F[_]: Monad](keyPair: KeyPair, message: ByteVector): EitherT[F, CryptoError, Signature] =
     for {
       secret ← nonFatalHandling {
         ec.keyFromPrivate(keyPair.secretKey.value.toHex, "hex")
-      }("Cannot get private key from key pair.")
+      }("Cannot get private key from key pair")
       hash ← Utils.hashJs(message, hasher)
       signHex ← nonFatalHandling(secret.sign(new Uint8Array(hash)).toDER("hex"))("Cannot sign message")
     } yield Signature(ByteVector.fromValidHex(signHex))
@@ -86,7 +86,7 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
         ec.keyFromPublic(hex, "hex")
       }("Incorrect public key format.")
       hash ← Utils.hashJs(message, hasher)
-      verify ← nonFatalHandling(public.verify(new Uint8Array(hash), signature.sign.toHex))("Cannot verify message.")
+      verify ← nonFatalHandling(public.verify(new Uint8Array(hash), signature.sign.toHex))("Cannot verify message")
       _ ← EitherT.cond[F](verify, (), CryptoError("Signature is not verified"))
     } yield ()
 }
@@ -94,7 +94,7 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
 object Ecdsa {
   val ecdsa_secp256k1_sha256 = new Ecdsa(new EC("secp256k1"), Some(JsCryptoHasher.Sha256))
 
-  val ecdsaSignAlgo: SignAlgo = SignAlgo(
+  val signAlgo: SignAlgo = SignAlgo(
     "ecdsa/secp256k1/sha256/js",
     generateKeyPair = ecdsa_secp256k1_sha256.generateKeyPair,
     signer = kp ⇒
