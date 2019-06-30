@@ -14,7 +14,7 @@ val scalaV = scalaVersion := "2.12.8"
 
 val commons = Seq(
   scalaV,
-  version                   := "0.0.5",
+  version                   := "0.0.7",
   fork in Test              := true,
   parallelExecution in Test := false,
   organization              := "one.fluence",
@@ -105,7 +105,7 @@ lazy val `crypto-hashsign` = crossProject(JVMPlatform, JSPlatform)
   .jsSettings(
     libraryDependencies += "io.scalajs" %%% "nodejs" % "0.4.2",
     npmDependencies in Compile ++= Seq(
-      "elliptic" -> "6.4.0",
+      "elliptic" -> "6.4.1",
       "supercop.js" -> "2.0.1"
     ),
     scalaJSModuleKind in Test := ModuleKind.CommonJSModule,
@@ -127,7 +127,7 @@ lazy val `crypto-cipher` = crossProject(JVMPlatform, JSPlatform)
   .settings(
     commons,
     libraryDependencies ++= Seq(
-      "biz.enef"      %%% "slogging"  % SloggingV,
+      "biz.enef"      %%% "slogging"  % SloggingV % Test,
       "org.scalatest" %%% "scalatest" % ScalatestV % Test
     )
   )
