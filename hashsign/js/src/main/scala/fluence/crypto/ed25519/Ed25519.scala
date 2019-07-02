@@ -22,7 +22,7 @@ import cats.data.EitherT
 import fluence.crypto.CryptoError.nonFatalHandling
 import fluence.crypto.facade.ed25519.Supercop
 import fluence.crypto.hash.JsCryptoHasher
-import fluence.crypto.{Crypto, CryptoError, KeyPair, Utils}
+import fluence.crypto.{Crypto, CryptoError, KeyPair, CryptoJsHelpers}
 import fluence.crypto.signature.{SignAlgo, Signature, SignatureChecker, Signer}
 import io.scalajs.nodejs.buffer.Buffer
 import scodec.bits.ByteVector
@@ -31,11 +31,11 @@ import scala.language.higherKinds
 
 class Ed25519(hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
 
-  import Utils._
+  import CryptoJsHelpers._
 
   def sign[F[_]: Monad](keyPair: KeyPair, message: ByteVector): EitherT[F, CryptoError, Signature] =
     for {
-      hash ← Utils.hash(message, hasher)
+      hash ← JsCryptoHasher.hash(message, hasher)
       sign ← nonFatalHandling {
         Supercop.sign(
           Buffer.from(ByteVector(hash).toHex, "hex"),
@@ -51,7 +51,7 @@ class Ed25519(hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
     message: ByteVector
   ): EitherT[F, CryptoError, Unit] =
     for {
-      hash ← Utils.hash(message, hasher)
+      hash ← JsCryptoHasher.hash(message, hasher)
       verify ← nonFatalHandling(
         Supercop.verify(signature.sign.toJsBuffer, ByteVector(hash).toJsBuffer, pubKey.value.toJsBuffer)
       )("Cannot verify message")

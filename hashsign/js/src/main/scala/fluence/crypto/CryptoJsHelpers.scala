@@ -17,30 +17,13 @@
 
 package fluence.crypto
 
-import cats.Monad
-import cats.data.EitherT
 import io.scalajs.nodejs.buffer.Buffer
 import scodec.bits.ByteVector
 
 import scala.language.higherKinds
-import scala.scalajs.js.JSConverters._
-import scala.scalajs.js
 
-object Utils {
+object CryptoJsHelpers {
   implicit class ByteVectorOp(bv: ByteVector) {
     def toJsBuffer: Buffer = Buffer.from(bv.toHex, "hex")
-  }
-
-  def hashJs[F[_]: Monad](message: ByteVector, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]): EitherT[F, CryptoError, js.Array[Byte]] = {
-    hash(message, hasher)
-      .map(_.toJSArray)
-  }
-
-  def hash[F[_]: Monad](message: ByteVector, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]): EitherT[F, CryptoError, Array[Byte]] = {
-    val arr = message.toArray
-    hasher
-      .fold(EitherT.pure[F, CryptoError](arr)) { h ⇒
-        h[F](arr)
-      }
   }
 }

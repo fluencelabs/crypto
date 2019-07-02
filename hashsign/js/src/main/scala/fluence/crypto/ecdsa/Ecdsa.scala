@@ -71,7 +71,7 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
       secret ← nonFatalHandling {
         ec.keyFromPrivate(keyPair.secretKey.value.toHex, "hex")
       }("Cannot get private key from key pair")
-      hash ← Utils.hashJs(message, hasher)
+      hash ← JsCryptoHasher.hashJs(message, hasher)
       signHex ← nonFatalHandling(secret.sign(new Uint8Array(hash)).toDER("hex"))("Cannot sign message")
     } yield Signature(ByteVector.fromValidHex(signHex))
 
@@ -85,7 +85,7 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
         val hex = pubKey.value.toHex
         ec.keyFromPublic(hex, "hex")
       }("Incorrect public key format.")
-      hash ← Utils.hashJs(message, hasher)
+      hash ← JsCryptoHasher.hashJs(message, hasher)
       verify ← nonFatalHandling(public.verify(new Uint8Array(hash), signature.sign.toHex))("Cannot verify message")
       _ ← EitherT.cond[F](verify, (), CryptoError("Signature is not verified"))
     } yield ()

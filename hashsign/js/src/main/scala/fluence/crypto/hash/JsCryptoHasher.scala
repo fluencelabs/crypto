@@ -17,10 +17,14 @@
 
 package fluence.crypto.hash
 
+import cats.Monad
+import cats.data.EitherT
 import fluence.crypto.{Crypto, CryptoError}
 import fluence.crypto.facade.ecdsa.{SHA1, SHA256}
 import scodec.bits.ByteVector
 
+import scala.language.higherKinds
+import scala.scalajs.js
 import scala.scalajs.js.JSConverters._
 import scala.scalajs.js.typedarray.Uint8Array
 import scala.util.Try
@@ -44,4 +48,27 @@ object JsCryptoHasher {
         ByteVector.fromValidHex(sha1.digest("hex")).toArray
       }.toEither.left.map(err ⇒ CryptoError("Cannot calculate Sha256 hash", Some(err)))
     }
+
+  /**
+   * Calculates hash of message.
+   *
+   * @return hash in JS array
+   */
+  def hashJs[F[_]: Monad](message: ByteVector, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]): EitherT[F, CryptoError, js.Array[Byte]] = {
+    hash(message, hasher)
+      .map(_.toJSArray)
+  }
+
+  /**
+   * Calculates hash of message.
+   *
+   * @return hash in Scala array
+   */
+  def hash[F[_]: Monad](message: ByteVector, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]): EitherT[F, CryptoError, Array[Byte]] = {
+    val arr = message.toArray
+    hasher
+      .fold(EitherT.pure[F, CryptoError](arr)) { h ⇒
+        h[F](arr)
+      }
+  }
 }
