@@ -137,13 +137,21 @@ object Ed25519 {
   /**
    * Keys in tendermint are generating with a random seed of 32 bytes
    */
-  val tendermintEd25519 = new Ed25519(256)
-  val tendermintAlgo: SignAlgo = signAlgo(256)
+  val ed25519 = new Ed25519(256)
+  val signAlgo: SignAlgo = signAlgoInit(256)
 
-  def ed25519(strength: Int) = new Ed25519(strength)
+  /**
+   *
+   * @param strength the size, in bits, of the keys we want to produce
+   */
+  def ed25519Init(strength: Int) = new Ed25519(strength)
 
-  def signAlgo(strength: Int): SignAlgo = {
-    val algo = ed25519(strength)
+  /**
+   *
+   * @param strength the size, in bits, of the keys we want to produce
+   */
+  def signAlgoInit(strength: Int): SignAlgo = {
+    val algo = ed25519Init(strength)
     SignAlgo(
       name = "ed25519",
       generateKeyPair = algo.generateKeyPair,

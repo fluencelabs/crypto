@@ -26,4 +26,3 @@ object FluenceCrossType extends sbtcrossproject.CrossType {
   override def sharedSrcDir(projectBase: File, conf: String) =
     Some(shared(projectBase, conf))
 }
-

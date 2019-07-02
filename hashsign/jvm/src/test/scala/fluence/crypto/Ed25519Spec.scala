@@ -21,7 +21,7 @@ import java.io.File
 
 import cats.data.EitherT
 import cats.instances.try_._
-import fluence.crypto.ecdsa.Ed25519
+import fluence.crypto.eddsa.Ed25519
 import fluence.crypto.keystore.FileKeyStorage
 import fluence.crypto.signature.Signature
 import org.scalatest.{Matchers, WordSpec}
@@ -48,7 +48,7 @@ class Ed25519Spec extends WordSpec with Matchers {
 
   "ed25519 algorithm" should {
     "correct sign and verify data" in {
-      val algorithm = Ed25519.ed25519(32)
+      val algorithm = Ed25519.ed25519Init(32)
 
       val keys = algorithm.generateKeyPair.unsafe(None)
       val pubKey = keys.publicKey
@@ -66,7 +66,7 @@ class Ed25519Spec extends WordSpec with Matchers {
     }
 
     "correctly work with signer and checker" in {
-      val algo = Ed25519.signAlgo(32)
+      val algo = Ed25519.signAlgo
       val keys = algo.generateKeyPair.unsafe(None)
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)
@@ -81,7 +81,7 @@ class Ed25519Spec extends WordSpec with Matchers {
     }
 
     "throw an errors on invalid data" in {
-      val algo = Ed25519.signAlgo(32)
+      val algo = Ed25519.signAlgo
       val keys = algo.generateKeyPair.unsafe(None)
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)
@@ -103,7 +103,7 @@ class Ed25519Spec extends WordSpec with Matchers {
     }
 
     "store and read key from file" in {
-      val algo = Ed25519.signAlgo(32)
+      val algo = Ed25519.signAlgo
       val keys = algo.generateKeyPair.unsafe(None)
 
       val keyFile = File.createTempFile("test", "")
@@ -127,10 +127,10 @@ class Ed25519Spec extends WordSpec with Matchers {
     }
 
     "restore key pair from secret key" in {
-      val algo = Ed25519.signAlgo(32)
+      val algo = Ed25519.signAlgo
       val testKeys = algo.generateKeyPair.unsafe(None)
 
-      val ed25519 = Ed25519.ed25519(32)
+      val ed25519 = Ed25519.ed25519
 
       val newKeys = ed25519.restorePairFromSecret(testKeys.secretKey).extract
 
