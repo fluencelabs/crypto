@@ -29,7 +29,7 @@ import scodec.bits.ByteVector
 
 import scala.util.{Random, Try}
 
-class EcdsaSpec extends WordSpec with Matchers {
+class JvmEcdsaSpec extends WordSpec with Matchers {
 
   def rndBytes(size: Int): Array[Byte] = Random.nextString(10).getBytes
 
@@ -46,62 +46,7 @@ class EcdsaSpec extends WordSpec with Matchers {
     def isOk: Boolean = et.value.fold(_ ⇒ false, _.isRight)
   }
 
-  "ecdsa algorithm" should {
-    "correct sign and verify data" in {
-      val algorithm = Ecdsa.ecdsa_secp256k1_sha256
-
-      val keys = algorithm.generateKeyPair.unsafe(None)
-      val pubKey = keys.publicKey
-      val data = rndByteVector(10)
-      val sign = algorithm.sign[Try](keys, data).extract
-
-      algorithm.verify[Try](pubKey, sign, data).isOk shouldBe true
-
-      val randomData = rndByteVector(10)
-      val randomSign = algorithm.sign(keys, randomData).extract
-
-      algorithm.verify(pubKey, randomSign, data).isOk shouldBe false
-
-      algorithm.verify(pubKey, sign, randomData).isOk shouldBe false
-    }
-
-    "correctly work with signer and checker" in {
-      val algo = Ecdsa.signAlgo
-      val keys = algo.generateKeyPair.unsafe(None)
-      val signer = algo.signer(keys)
-      val checker = algo.checker(keys.publicKey)
-
-      val data = rndByteVector(10)
-      val sign = signer.sign(data).extract
-
-      checker.check(sign, data).isOk shouldBe true
-
-      val randomSign = signer.sign(rndByteVector(10)).extract
-      checker.check(randomSign, data).isOk shouldBe false
-    }
-
-    "throw an errors on invalid data" in {
-      val algo = Ecdsa.signAlgo
-      val keys = algo.generateKeyPair.unsafe(None)
-      val signer = algo.signer(keys)
-      val checker = algo.checker(keys.publicKey)
-      val data = rndByteVector(10)
-
-      val sign = signer.sign(data).extract
-
-      the[CryptoError] thrownBy {
-        checker.check(Signature(rndByteVector(10)), data).value.flatMap(_.toTry).get
-      }
-      val invalidChecker = algo.checker(KeyPair.fromByteVectors(rndByteVector(10), rndByteVector(10)).publicKey)
-      the[CryptoError] thrownBy {
-        invalidChecker
-          .check(sign, data)
-          .value
-          .flatMap(_.toTry)
-          .get
-      }
-    }
-
+  "jvm ecdsa algorithm" should {
     "store and read key from file" in {
       val algo = Ecdsa.signAlgo
       val keys = algo.generateKeyPair.unsafe(None)

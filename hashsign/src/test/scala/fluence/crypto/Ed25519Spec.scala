@@ -22,7 +22,6 @@ import java.io.File
 import cats.data.EitherT
 import cats.instances.try_._
 import fluence.crypto.eddsa.Ed25519
-import fluence.crypto.keystore.FileKeyStorage
 import fluence.crypto.signature.Signature
 import org.scalatest.{Matchers, WordSpec}
 import scodec.bits.ByteVector
@@ -48,7 +47,7 @@ class Ed25519Spec extends WordSpec with Matchers {
 
   "ed25519 algorithm" should {
     "correct sign and verify data" in {
-      val algorithm = Ed25519.ed25519Init(32)
+      val algorithm = Ed25519.ed25519
 
       val keys = algorithm.generateKeyPair.unsafe(None)
       val pubKey = keys.publicKey
@@ -100,75 +99,6 @@ class Ed25519Spec extends WordSpec with Matchers {
           .flatMap(_.toTry)
           .get
       }
-    }
-
-    "store and read key from file" in {
-      val algo = Ed25519.signAlgo
-      val keys = algo.generateKeyPair.unsafe(None)
-
-      val keyFile = File.createTempFile("test", "")
-      if (keyFile.exists()) keyFile.delete()
-      val storage = new FileKeyStorage(keyFile)
-
-      storage.storeKeyPair(keys).unsafeRunSync()
-
-      val keysReadE = storage.readKeyPair
-      val keysRead = keysReadE.unsafeRunSync()
-
-      val signer = algo.signer(keys)
-      val data = rndByteVector(10)
-      val sign = signer.sign(data).extract
-
-      algo.checker(keys.publicKey).check(sign, data).isOk shouldBe true
-      algo.checker(keysRead.publicKey).check(sign, data).isOk shouldBe true
-
-      //try to store key into previously created file
-      storage.storeKeyPair(keys).attempt.unsafeRunSync().isLeft shouldBe true
-    }
-
-    "restore key pair from secret key" in {
-      val algo = Ed25519.signAlgo
-      val testKeys = algo.generateKeyPair.unsafe(None)
-
-      val ed25519 = Ed25519.ed25519
-
-      val newKeys = ed25519.restorePairFromSecret(testKeys.secretKey).extract
-
-      testKeys shouldBe newKeys
-    }
-
-    "work with tendermint keys" in {
-      /*
-        {
-          "address": "C08269A8AACD53C3488F16F285821DAC77CF5DEF",
-          "pub_key": {
-            "type": "tendermint/PubKeyEd25519",
-            "value": "FWB5lXZ/TT2132+jXp/8aQzNwISwp9uuFz4z0TXDdxY="
-          },
-          "priv_key": {
-            "type": "tendermint/PrivKeyEd25519",
-            "value": "P6jw9q/Rytdxpv5Wxs1aYA8w82uS0x3CpmS9+GpaMGIVYHmVdn9NPbXfb6Nen/xpDM3AhLCn264XPjPRNcN3Fg=="
-          }
-        }
-       */
-
-      val privKeyBase64 = "P6jw9q/Rytdxpv5Wxs1aYA8w82uS0x3CpmS9+GpaMGIVYHmVdn9NPbXfb6Nen/xpDM3AhLCn264XPjPRNcN3Fg=="
-      val pubKeyBase64 = "FWB5lXZ/TT2132+jXp/8aQzNwISwp9uuFz4z0TXDdxY="
-
-      val privKey = ByteVector.fromBase64Descriptive(privKeyBase64).right.get
-      val pubKey = ByteVector.fromBase64Descriptive(pubKeyBase64).right.get
-
-      val restored = Ed25519.ed25519
-        .restorePairFromSecret[Try](KeyPair.Secret(privKey.dropRight(32)))
-        .value
-        .get
-        .right
-        .get
-        .publicKey
-        .bytes
-
-      restored shouldBe pubKey.toArray
-      restored shouldBe privKey.drop(32).toArray
     }
   }
 }
