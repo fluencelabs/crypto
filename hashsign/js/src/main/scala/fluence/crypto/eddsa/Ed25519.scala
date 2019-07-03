@@ -15,7 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package fluence.crypto.ed25519
+package fluence.crypto.eddsa
 
 import cats.Monad
 import cats.data.EitherT
