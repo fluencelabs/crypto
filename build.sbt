@@ -14,7 +14,7 @@ val scalaV = scalaVersion := "2.12.8"
 
 val commons = Seq(
   scalaV,
-  version                   := "0.0.8",
+  version                   := "0.0.9",
   fork in Test              := true,
   parallelExecution in Test := false,
   organization              := "one.fluence",
@@ -106,7 +106,8 @@ lazy val `crypto-hashsign` = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += "io.scalajs" %%% "nodejs" % "0.4.2",
     npmDependencies in Compile ++= Seq(
       "elliptic" -> "6.4.1",
-      "supercop.js" -> "2.0.1"
+      "supercop.js" -> "2.0.1",
+      "hash.js" -> "1.1.7"
     ),
     scalaJSModuleKind in Test := ModuleKind.CommonJSModule,
     //all JavaScript dependencies will be concatenated to a single file *-jsdeps.js
