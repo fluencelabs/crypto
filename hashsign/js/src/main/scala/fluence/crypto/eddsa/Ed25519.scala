@@ -81,7 +81,7 @@ class Ed25519(hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
 
 object Ed25519 {
 
-  val ed25519: Ed25519 = new Ed25519(Some(JsCryptoHasher.Sha256))
+  val ed25519: Ed25519 = new Ed25519(None)
 
   val signAlgo: SignAlgo = {
     SignAlgo(
