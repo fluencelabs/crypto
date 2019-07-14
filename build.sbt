@@ -107,8 +107,7 @@ lazy val `crypto-hashsign` = crossProject(JVMPlatform, JSPlatform)
     npmDependencies in Compile ++= Seq(
       "elliptic" -> "6.4.1",
       "supercop.js" -> "2.0.1",
-      "hash.js" -> "1.1.7",
-      "buffer" -> "5.2.1"
+      "hash.js" -> "1.1.7"
     ),
     scalaJSModuleKind in Test := ModuleKind.CommonJSModule,
     //all JavaScript dependencies will be concatenated to a single file *-jsdeps.js
