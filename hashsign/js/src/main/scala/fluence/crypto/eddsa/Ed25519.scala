@@ -22,9 +22,8 @@ import cats.data.EitherT
 import fluence.crypto.CryptoError.nonFatalHandling
 import fluence.crypto.facade.ed25519.Supercop
 import fluence.crypto.hash.JsCryptoHasher
-import fluence.crypto.{Crypto, CryptoError, KeyPair, CryptoJsHelpers}
+import fluence.crypto.{Crypto, CryptoError, CryptoJsHelpers, KeyPair}
 import fluence.crypto.signature.{SignAlgo, Signature, SignatureChecker, Signer}
-import io.scalajs.nodejs.buffer.Buffer
 import scodec.bits.ByteVector
 
 import scala.language.higherKinds
@@ -38,7 +37,7 @@ class Ed25519(hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
       hash ← JsCryptoHasher.hash(message, hasher)
       sign ← nonFatalHandling {
         Supercop.sign(
-          Buffer.from(ByteVector(hash).toHex, "hex"),
+          ByteVector(hash).toJsBuffer,
           keyPair.publicKey.value.toJsBuffer,
           keyPair.secretKey.value.toJsBuffer
         )

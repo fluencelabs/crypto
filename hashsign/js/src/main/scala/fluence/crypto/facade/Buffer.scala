@@ -15,15 +15,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package fluence.crypto
+package fluence.crypto.facade
 
-import io.scalajs.nodejs.buffer.Buffer
-import scodec.bits.ByteVector
+import scala.scalajs.js
+import scala.scalajs.js.annotation.JSGlobal
 
-import scala.language.higherKinds
-
-object CryptoJsHelpers {
-  implicit class ByteVectorOp(bv: ByteVector) {
-    def toJsBuffer: Buffer = new Buffer(ByteVector(bv.toArray).toHex, "hex")
-  }
+@js.native
+@JSGlobal("Buffer")
+class Buffer(arr: js.Array[Byte]) extends js.Object {
+  def toString(enc: String): String = js.native
 }
