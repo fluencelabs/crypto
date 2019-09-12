@@ -35,7 +35,7 @@ object JdkCryptoHasher {
    *                  [[https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#MessageDigest]]
    */
   def apply(algorithm: String): Crypto.Hasher[Array[Byte], Array[Byte]] =
-    Crypto.liftFuncEither(
+    Crypto(
       bytes ⇒
         Try(MessageDigest.getInstance(algorithm).digest(bytes)).toEither.left
           .map(err ⇒ CryptoError(s"Cannot get $algorithm hash", Some(err)))

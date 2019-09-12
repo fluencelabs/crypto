@@ -17,18 +17,32 @@
 
 package fluence.crypto
 
-import fluence.codec.{CodecError, MonadicalEitherArrow, PureCodec}
+import cats.data.Kleisli
 
-object Crypto extends MonadicalEitherArrow[CryptoError] {
-  type Hasher[A, B] = Func[A, B]
+import scala.util.Try
 
-  type Cipher[A] = Bijection[A, Array[Byte]]
+object Crypto {
+  type Err[T] = Either[CryptoError, T]
 
-  type KeyPairGenerator = Func[Option[Array[Byte]], KeyPair]
+  type Hasher[A, B] = Kleisli[Err, A, B]
 
-  // TODO: move it to MonadicalEitherArrow, make liftTry with try-catch, and easy conversions for other funcs and bijections
-  implicit val liftCodecErrorToCrypto: CodecError ⇒ CryptoError = err ⇒ CryptoError("Codec error", Some(err))
+  type Func[A, B] = Kleisli[Err, A, B]
 
-  implicit def codec[A, B](implicit codec: PureCodec[A, B]): Bijection[A, B] =
-    Bijection(fromOtherFunc(codec.direct), fromOtherFunc(codec.inverse))
+  case class Cipher[A](
+                      encrypt: Kleisli[Err, A, Array[Byte]],
+                      decrypt: Kleisli[Err, Array[Byte], A]
+                      )
+
+  type KeyPairGenerator = Kleisli[Err, Option[Array[Byte]], KeyPair]
+
+  def apply[A, B](fn: A ⇒ Err[B]): Func[A, B] = Kleisli[Err, A, B](fn)
+
+  def tryFn[A, B](fn: A ⇒ B)(errorText: String): Crypto.Func[A, B] =
+    Crypto(a ⇒ tryUnit(fn(a))(errorText))
+
+  def tryUnit[B](fn:  ⇒ B)(errorText: String): Err[ B] =
+    Try(fn).toEither.left.map(t ⇒ CryptoError(errorText, Some(t)))
+
+  def cond[B](ifTrue: ⇒ B, errorText: ⇒ String): Crypto.Func[Boolean, B] =
+    Crypto( Either.cond(_, ifTrue, CryptoError(errorText)))
 }

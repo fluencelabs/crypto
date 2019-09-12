@@ -17,24 +17,11 @@
 
 package fluence.crypto
 
-import cats.Applicative
-import cats.data.EitherT
-
 import scala.language.higherKinds
-import scala.util.control.{NoStackTrace, NonFatal}
+import scala.util.control.NoStackTrace
 
 case class CryptoError(message: String, causedBy: Option[Throwable] = None) extends NoStackTrace {
   override def getMessage: String = message
 
   override def getCause: Throwable = causedBy getOrElse super.getCause
-}
-
-object CryptoError {
-
-  // TODO: there's a common `catchNonFatal` pattern, we should refactor this metod onto it
-  def nonFatalHandling[F[_]: Applicative, A](a: ⇒ A)(errorText: String): EitherT[F, CryptoError, A] =
-    try EitherT.pure(a)
-    catch {
-      case NonFatal(e) ⇒ EitherT.leftT(CryptoError(errorText + ": " + e.getLocalizedMessage, Some(e)))
-    }
 }

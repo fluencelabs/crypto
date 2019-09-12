@@ -18,8 +18,10 @@
 package fluence.crypto.cipher
 
 import cats.Monad
-import cats.data.EitherT
-import fluence.crypto.{Crypto, CryptoError}
+import cats.data.Kleisli
+import fluence.crypto.Crypto
+import cats.instances.either._
+import cats.syntax.either._
 
 import scala.collection.Searching.{Found, InsertionPoint, SearchResult}
 import scala.language.higherKinds
@@ -41,13 +43,10 @@ object CipherSearch {
   def binarySearch[A, B](coll: IndexedSeq[A], decrypt: Crypto.Func[A, B])(
     implicit ordering: Ordering[B]
   ): Crypto.Func[B, SearchResult] =
-    new Crypto.Func[B, SearchResult] {
-      override def apply[F[_]](input: B)(
-        implicit F: Monad[F]
-      ): EitherT[F, CryptoError, SearchResult] = {
-        type M[X] = EitherT[F, CryptoError, X]
-        implicitly[Monad[M]].tailRecM((0, coll.length)) {
-          case (from, to) if from == to ⇒ EitherT.rightT(Right(InsertionPoint(from)))
+    Kleisli {
+      input ⇒ {
+        implicitly[Monad[Crypto.Err]].tailRecM((0, coll.length)) {
+          case (from, to) if from == to ⇒ Right(InsertionPoint(from)).asRight
           case (from, to) ⇒
             val idx = from + (to - from - 1) / 2
             decrypt(coll(idx)).map { d ⇒
