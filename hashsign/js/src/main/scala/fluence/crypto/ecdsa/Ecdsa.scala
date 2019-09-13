@@ -17,8 +17,6 @@
 
 package fluence.crypto.ecdsa
 
-import cats.Monad
-import cats.data.EitherT
 import fluence.crypto._
 import fluence.crypto.facade.ecdsa.EC
 import fluence.crypto.hash.JsCryptoHasher
@@ -35,62 +33,62 @@ import scala.scalajs.js.typedarray.Uint8Array
  * @param ec implementation of ecdsa logic for different curves
  */
 class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
-  import CryptoError.nonFatalHandling
 
   /**
    * Restores key pair by secret key.
    *
    */
-  def restoreKeyPair[F[_]](secretKey: KeyPair.Secret)(implicit F: Monad[F]): EitherT[F, CryptoError, KeyPair] = {
-    for {
-      secret ← nonFatalHandling {
-        val key = ec.keyFromPrivate(secretKey.value.toHex, "hex")
-        val publicHex = key.getPublic(compact = true, "hex")
-        val secretHex = key.getPrivate("hex")
-        val public = ByteVector.fromValidHex(publicHex)
-        val secret = ByteVector.fromValidHex(secretHex)
-        KeyPair.fromByteVectors(public, secret)
-      }("Incorrect secret key format")
-    } yield secret
-  }
+  val restoreKeyPair: Crypto.Func[KeyPair.Secret, KeyPair] =
+    Crypto.tryFn[KeyPair.Secret, KeyPair] { secretKey ⇒
+      val key = ec.keyFromPrivate(secretKey.value.toHex, "hex")
+      val publicHex = key.getPublic(compact = true, "hex")
+      val secretHex = key.getPrivate("hex")
+      val public = ByteVector.fromValidHex(publicHex)
+      val secret = ByteVector.fromValidHex(secretHex)
+      KeyPair.fromByteVectors(public, secret)
+    }("Incorrect secret key format")
 
   val generateKeyPair: Crypto.KeyPairGenerator =
-    new Crypto.Func[Option[Array[Byte]], KeyPair] {
-      override def apply[F[_]](input: Option[Array[Byte]])(implicit F: Monad[F]): EitherT[F, CryptoError, KeyPair] =
-        nonFatalHandling {
-          val seedJs = input.map(bs ⇒ js.Dynamic.literal(entropy = bs.toJSArray))
-          val key = ec.genKeyPair(seedJs)
-          val publicHex = key.getPublic(compact = true, "hex")
-          val secretHex = key.getPrivate("hex")
-          val public = ByteVector.fromValidHex(publicHex)
-          val secret = ByteVector.fromValidHex(secretHex)
-          KeyPair.fromByteVectors(public, secret)
-        }("Failed to generate key pair")
+    Crypto.tryFn[Option[Array[Byte]], KeyPair] { input ⇒
+      val seedJs = input.map(bs ⇒ js.Dynamic.literal(entropy = bs.toJSArray))
+      val key = ec.genKeyPair(seedJs)
+      val publicHex = key.getPublic(compact = true, "hex")
+      val secretHex = key.getPrivate("hex")
+      val public = ByteVector.fromValidHex(publicHex)
+      val secret = ByteVector.fromValidHex(secretHex)
+      KeyPair.fromByteVectors(public, secret)
+    }("Failed to generate key pair")
+
+  val sign: Crypto.Func[(KeyPair, ByteVector), Signature] =
+    Crypto {
+      case (keyPair: KeyPair, message: ByteVector) ⇒
+        for {
+          secret ← Crypto.tryUnit {
+            ec.keyFromPrivate(keyPair.secretKey.value.toHex, "hex")
+          }("Cannot get private key from key pair")
+          hash ← JsCryptoHasher.hashJs(message, hasher)
+          signHex ← Crypto.tryUnit(secret.sign(new Uint8Array(hash)).toDER("hex"))("Cannot sign message")
+        } yield Signature(ByteVector.fromValidHex(signHex))
     }
 
-  def sign[F[_]: Monad](keyPair: KeyPair, message: ByteVector): EitherT[F, CryptoError, Signature] =
-    for {
-      secret ← nonFatalHandling {
-        ec.keyFromPrivate(keyPair.secretKey.value.toHex, "hex")
-      }("Cannot get private key from key pair")
-      hash ← JsCryptoHasher.hashJs(message, hasher)
-      signHex ← nonFatalHandling(secret.sign(new Uint8Array(hash)).toDER("hex"))("Cannot sign message")
-    } yield Signature(ByteVector.fromValidHex(signHex))
+  val verify: Crypto.Func[(KeyPair.Public, Signature, ByteVector), Unit] =
+    Crypto {
+      case (
+          pubKey,
+          signature,
+          message
+          ) ⇒
+        for {
+          public ← Crypto.tryUnit {
+            val hex = pubKey.value.toHex
+            ec.keyFromPublic(hex, "hex")
+          }("Incorrect public key format.")
+          hash ← JsCryptoHasher.hashJs(message, hasher)
+          verify ← Crypto.tryUnit(public.verify(new Uint8Array(hash), signature.sign.toHex))("Cannot verify message")
+          _ ← Either.cond(verify, (), CryptoError("Signature is not verified"))
+        } yield ()
+    }
 
-  def verify[F[_]: Monad](
-    pubKey: KeyPair.Public,
-    signature: Signature,
-    message: ByteVector
-  ): EitherT[F, CryptoError, Unit] =
-    for {
-      public ← nonFatalHandling {
-        val hex = pubKey.value.toHex
-        ec.keyFromPublic(hex, "hex")
-      }("Incorrect public key format.")
-      hash ← JsCryptoHasher.hashJs(message, hasher)
-      verify ← nonFatalHandling(public.verify(new Uint8Array(hash), signature.sign.toHex))("Cannot verify message")
-      _ ← EitherT.cond[F](verify, (), CryptoError("Signature is not verified"))
-    } yield ()
 }
 
 object Ecdsa {
@@ -102,20 +100,13 @@ object Ecdsa {
     signer = kp ⇒
       Signer(
         kp.publicKey,
-        new Crypto.Func[ByteVector, signature.Signature] {
-          override def apply[F[_]](
-            input: ByteVector
-          )(implicit F: Monad[F]): EitherT[F, CryptoError, signature.Signature] =
-            ecdsa_secp256k1_sha256.sign(kp, input)
-        }
-    ),
+        ecdsa_secp256k1_sha256.sign.local(kp -> _)
+      ),
     checker = pk ⇒
-      new SignatureChecker {
-        override def check[F[_]: Monad](
-          signature: fluence.crypto.signature.Signature,
-          plain: ByteVector
-        ): EitherT[F, CryptoError, Unit] =
-          ecdsa_secp256k1_sha256.verify(pk, signature, plain)
-    }
+      SignatureChecker(
+        ecdsa_secp256k1_sha256.verify.local {
+          case (signature, plain) ⇒ (pk, signature, plain)
+        }
+      )
   )
 }

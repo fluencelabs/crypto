@@ -17,17 +17,11 @@
 
 package fluence.crypto
 
-import java.io.File
-
-import cats.data.EitherT
-import cats.instances.try_._
 import fluence.crypto.ecdsa.Ecdsa
-import fluence.crypto.keystore.FileKeyStorage
-import fluence.crypto.signature.Signature
 import org.scalatest.{Matchers, WordSpec}
 import scodec.bits.ByteVector
 
-import scala.util.{Random, Try}
+import scala.util.Random
 
 class JvmEcdsaSpec extends WordSpec with Matchers {
 
@@ -35,49 +29,15 @@ class JvmEcdsaSpec extends WordSpec with Matchers {
 
   def rndByteVector(size: Int) = ByteVector(rndBytes(size))
 
-  private implicit class TryEitherTExtractor[A <: Throwable, B](et: EitherT[Try, A, B]) {
-
-    def extract: B =
-      et.value.map {
-        case Left(e) ⇒ fail(e) // for making test fail message more describable
-        case Right(v) ⇒ v
-      }.get
-
-    def isOk: Boolean = et.value.fold(_ ⇒ false, _.isRight)
-  }
-
   "jvm ecdsa algorithm" should {
-    "store and read key from file" in {
-      val algo = Ecdsa.signAlgo
-      val keys = algo.generateKeyPair.unsafe(None)
-
-      val keyFile = File.createTempFile("test", "")
-      if (keyFile.exists()) keyFile.delete()
-      val storage = new FileKeyStorage(keyFile)
-
-      storage.storeKeyPair(keys).unsafeRunSync()
-
-      val keysReadE = storage.readKeyPair
-      val keysRead = keysReadE.unsafeRunSync()
-
-      val signer = algo.signer(keys)
-      val data = rndByteVector(10)
-      val sign = signer.sign(data).extract
-
-      algo.checker(keys.publicKey).check(sign, data).isOk shouldBe true
-      algo.checker(keysRead.publicKey).check(sign, data).isOk shouldBe true
-
-      //try to store key into previously created file
-      storage.storeKeyPair(keys).attempt.unsafeRunSync().isLeft shouldBe true
-    }
 
     "restore key pair from secret key" in {
       val algo = Ecdsa.signAlgo
-      val testKeys = algo.generateKeyPair.unsafe(None)
+      val testKeys = algo.generateKeyPair(None).right.get
 
       val ecdsa = Ecdsa.ecdsa_secp256k1_sha256
 
-      val newKeys = ecdsa.restorePairFromSecret(testKeys.secretKey).extract
+      val newKeys = ecdsa.restorePairFromSecret(testKeys.secretKey).right.get
 
       testKeys shouldBe newKeys
     }

@@ -17,13 +17,10 @@
 
 package fluence.crypto.signature
 
-import cats.Monad
-import cats.data.EitherT
-import fluence.crypto.CryptoError
+import cats.data.Kleisli
+import fluence.crypto.Crypto
 import scodec.bits.ByteVector
 
 import scala.language.higherKinds
 
-trait SignatureChecker {
-  def check[F[_]: Monad](signature: Signature, plain: ByteVector): EitherT[F, CryptoError, Unit]
-}
+case class SignatureChecker(check: Kleisli[Crypto.Result, (Signature, ByteVector), Unit])

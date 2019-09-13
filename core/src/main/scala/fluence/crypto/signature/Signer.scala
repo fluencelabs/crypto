@@ -17,10 +17,10 @@
 
 package fluence.crypto.signature
 
-import cats.syntax.profunctor._
+import cats.instances.either._
 import fluence.crypto.{Crypto, KeyPair}
 import scodec.bits.ByteVector
 
 case class Signer(publicKey: KeyPair.Public, sign: Crypto.Func[ByteVector, Signature]) {
-  lazy val signWithPK: Crypto.Func[ByteVector, PubKeyAndSignature] = sign.rmap(PubKeyAndSignature(publicKey, _))
+  lazy val signWithPK: Crypto.Func[ByteVector, PubKeyAndSignature] = sign.map(PubKeyAndSignature(publicKey, _))
 }

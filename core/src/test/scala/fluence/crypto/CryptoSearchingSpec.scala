@@ -30,17 +30,17 @@ class CryptoSearchingSpec extends WordSpec with Matchers {
       val crypt: Crypto.Cipher[String] = DumbCrypto.cipherString
 
       val plainTextElements = Array("A", "B", "C", "D", "E")
-      val encryptedElements = plainTextElements.map(t ⇒ crypt.direct.unsafe(t))
+      val encryptedElements = plainTextElements.map(t ⇒ crypt.encrypt.run(t).right.get)
 
-      val search = CipherSearch.binarySearch(encryptedElements, crypt.inverse)
+      val search = CipherSearch.binarySearch(encryptedElements, crypt.decrypt)
 
-      search.unsafe("B") shouldBe Found(1)
-      search.unsafe("D") shouldBe Found(3)
-      search.unsafe("E") shouldBe Found(4)
+      search("B").right.get shouldBe Found(1)
+      search("D").right.get shouldBe Found(3)
+      search("E").right.get shouldBe Found(4)
 
-      search.unsafe("0") shouldBe InsertionPoint(0)
-      search.unsafe("BB") shouldBe InsertionPoint(2)
-      search.unsafe("ZZ") shouldBe InsertionPoint(5)
+      search("0").right.get shouldBe InsertionPoint(0)
+      search("BB").right.get shouldBe InsertionPoint(2)
+      search("ZZ").right.get shouldBe InsertionPoint(5)
 
     }
   }

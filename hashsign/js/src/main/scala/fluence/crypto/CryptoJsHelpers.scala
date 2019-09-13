@@ -24,6 +24,6 @@ import scala.language.higherKinds
 
 object CryptoJsHelpers {
   implicit class ByteVectorOp(bv: ByteVector) {
-    def toJsBuffer: Buffer = new Buffer(ByteVector(bv.toArray).toHex, "hex")
+    def toJsBuffer: Buffer = Buffer.from(ByteVector(bv.toArray).toHex, "hex")
   }
 }

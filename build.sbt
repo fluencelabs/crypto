@@ -10,11 +10,11 @@ javaOptions in Test ++= Seq("-ea")
 
 skip in publish := true // Skip root project
 
-val scalaV = scalaVersion := "2.12.8"
+val scalaV = scalaVersion := "2.12.9"
 
 val commons = Seq(
   scalaV,
-  version                   := "0.0.15",
+  version                   := "0.1.0",
   fork in Test              := true,
   parallelExecution in Test := false,
   organization              := "one.fluence",
@@ -25,15 +25,15 @@ val commons = Seq(
   headerLicense       := Some(License.AGPLv3("2017", organizationName.value)),
   bintrayOrganization := Some("fluencelabs"),
   publishMavenStyle   := true,
+  scalafmtOnCompile   := true,
   bintrayRepository   := "releases",
   resolvers ++= Seq(Resolver.bintrayRepo("fluencelabs", "releases"), Resolver.sonatypeRepo("releases"))
 )
 
 commons
 
-val CodecV = "0.0.5"
-
-val CatsEffectV = "1.2.0"
+val CatsV = "2.0.0"
+val CirceV = "0.12.1"
 
 val SloggingV = "0.6.1"
 
@@ -50,7 +50,8 @@ lazy val `crypto-core` = crossProject(JVMPlatform, JSPlatform)
   .settings(
     commons,
     libraryDependencies ++= Seq(
-      "one.fluence"   %%% "codec-bits" % CodecV,
+      "org.scodec" %%% "scodec-core" % "1.11.3",
+      "org.typelevel" %%% "cats-core" % CatsV,
       "org.scalatest" %%% "scalatest"  % ScalatestV % Test
     )
   )
@@ -61,30 +62,6 @@ lazy val `crypto-core` = crossProject(JVMPlatform, JSPlatform)
 
 lazy val `crypto-core-js` = `crypto-core`.js
 lazy val `crypto-core-jvm` = `crypto-core`.jvm
-
-lazy val `crypto-keystore` = crossProject(JVMPlatform, JSPlatform)
-  .withoutSuffixFor(JVMPlatform)
-  .crossType(FluenceCrossType)
-  .in(file("keystore"))
-  .settings(
-    commons,
-    libraryDependencies ++= Seq(
-      "one.fluence"   %%% "codec-circe" % CodecV,
-      "biz.enef"      %%% "slogging"    % SloggingV,
-      "org.scalatest" %%% "scalatest"   % ScalatestV % Test
-    )
-  )
-  .jsSettings(
-    fork in Test := false
-  )
-  .jvmSettings(
-    libraryDependencies += "org.typelevel" %% "cats-effect" % CatsEffectV,
-  )
-  .enablePlugins(AutomateHeaderPlugin)
-  .dependsOn(`crypto-core`)
-
-lazy val `crypto-keystore-js` = `crypto-keystore`.js
-lazy val `crypto-keystore-jvm` = `crypto-keystore`.jvm
 
 lazy val `crypto-hashsign` = crossProject(JVMPlatform, JSPlatform)
   .withoutSuffixFor(JVMPlatform)
@@ -115,7 +92,7 @@ lazy val `crypto-hashsign` = crossProject(JVMPlatform, JSPlatform)
     fork in Test                  := false
   )
   .enablePlugins(AutomateHeaderPlugin)
-  .dependsOn(`crypto-core`, `crypto-keystore` % Test)
+  .dependsOn(`crypto-core`)
 
 lazy val `crypto-hashsign-js` = `crypto-hashsign`.js
   .enablePlugins(ScalaJSBundlerPlugin)
@@ -153,24 +130,3 @@ lazy val `crypto-cipher` = crossProject(JVMPlatform, JSPlatform)
 lazy val `crypto-cipher-js` = `crypto-cipher`.js
   .enablePlugins(ScalaJSBundlerPlugin)
 lazy val `crypto-cipher-jvm` = `crypto-cipher`.jvm
-
-lazy val `crypto-jwt` = crossProject(JVMPlatform, JSPlatform)
-  .withoutSuffixFor(JVMPlatform)
-  .crossType(FluenceCrossType)
-  .in(file("jwt"))
-  .settings(
-    commons,
-    libraryDependencies ++= Seq(
-      "one.fluence"   %%% "codec-circe" % CodecV,
-      "org.scalatest" %%% "scalatest"   % ScalatestV % Test
-    )
-  )
-  .jsSettings(
-    fork in Test      := false,
-    scalaJSModuleKind := ModuleKind.CommonJSModule
-  )
-  .enablePlugins(AutomateHeaderPlugin)
-  .dependsOn(`crypto-core`)
-
-lazy val `crypto-jwt-js` = `crypto-jwt`.js
-lazy val `crypto-jwt-jvm` = `crypto-jwt`.jvm

@@ -17,11 +17,8 @@
 
 package fluence.crypto.signature
 
-import cats.Monad
-import cats.data.EitherT
-import cats.syntax.strong._
-import cats.syntax.compose._
-import fluence.crypto.{Crypto, CryptoError, KeyPair}
+import cats.data.Kleisli
+import fluence.crypto.{Crypto, KeyPair}
 import scodec.bits.ByteVector
 
 import scala.language.higherKinds
@@ -38,7 +35,7 @@ case class SignAlgo(
   name: String,
   generateKeyPair: Crypto.KeyPairGenerator,
   signer: SignAlgo.SignerFn,
-  implicit val checker: SignAlgo.CheckerFn,
+  implicit val checker: SignAlgo.CheckerFn
 )
 
 object SignAlgo {
@@ -47,26 +44,12 @@ object SignAlgo {
   type CheckerFn = KeyPair.Public ⇒ SignatureChecker
 
   /**
-   * Take checker, signature, and plain data, and apply checker, returning Unit on success, or left side error.
-   */
-  private val fullChecker: Crypto.Func[((SignatureChecker, Signature), ByteVector), Unit] =
-    new Crypto.Func[((SignatureChecker, Signature), ByteVector), Unit] {
-      override def apply[F[_]: Monad](
-        input: ((SignatureChecker, Signature), ByteVector)
-      ): EitherT[F, CryptoError, Unit] = {
-        val ((signatureChecker, signature), plainData) = input
-        signatureChecker.check(signature, plainData)
-      }
-    }
-
-  /**
    * For CheckerFn, builds a function that takes PubKeyAndSignature along with plain data, and checks the signature.
    */
   def checkerFunc(fn: CheckerFn): Crypto.Func[(PubKeyAndSignature, ByteVector), Unit] =
-    Crypto
-      .liftFunc[PubKeyAndSignature, (SignatureChecker, Signature)] {
-        case PubKeyAndSignature(pk, signature) ⇒ fn(pk) -> signature
-      }
-      .first[ByteVector] andThen fullChecker
+    Kleisli {
+      case (pks, msg) ⇒
+        fn(pks.publicKey).check.run(pks.signature -> msg)
+    }
 
 }

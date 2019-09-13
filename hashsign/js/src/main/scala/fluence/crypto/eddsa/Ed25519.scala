@@ -17,9 +17,6 @@
 
 package fluence.crypto.eddsa
 
-import cats.Monad
-import cats.data.EitherT
-import fluence.crypto.CryptoError.nonFatalHandling
 import fluence.crypto.facade.ed25519.Supercop
 import fluence.crypto.hash.JsCryptoHasher
 import fluence.crypto.{Crypto, CryptoError, CryptoJsHelpers, KeyPair}
@@ -32,49 +29,51 @@ class Ed25519(hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
 
   import CryptoJsHelpers._
 
-  def sign[F[_]: Monad](keyPair: KeyPair, message: ByteVector): EitherT[F, CryptoError, Signature] =
-    for {
-      hash ← JsCryptoHasher.hash(message, hasher)
-      sign ← nonFatalHandling {
-        Supercop.sign(
-          ByteVector(hash).toJsBuffer,
-          keyPair.publicKey.value.toJsBuffer,
-          keyPair.secretKey.value.toJsBuffer
-        )
-      }("Error on signing message by js/ed25519 signature")
-    } yield Signature(ByteVector.fromValidHex(sign.toString("hex")))
+  val sign: Crypto.Func[(KeyPair, ByteVector), Signature] =
+    Crypto {
+      case (keyPair, message) ⇒
+        for {
+          hash ← JsCryptoHasher.hash(message, hasher)
+          sign ← Crypto.tryUnit {
+            Supercop.sign(
+              ByteVector(hash).toJsBuffer,
+              keyPair.publicKey.value.toJsBuffer,
+              keyPair.secretKey.value.toJsBuffer
+            )
+          }("Error on signing message by js/ed25519 signature")
+        } yield Signature(ByteVector.fromValidHex(sign.toString("hex")))
+    }
 
-  def verify[F[_]: Monad](
-    pubKey: KeyPair.Public,
-    signature: Signature,
-    message: ByteVector
-  ): EitherT[F, CryptoError, Unit] =
-    for {
-      hash ← JsCryptoHasher.hash(message, hasher)
-      verify ← nonFatalHandling(
-        Supercop.verify(signature.sign.toJsBuffer, ByteVector(hash).toJsBuffer, pubKey.value.toJsBuffer)
-      )("Cannot verify message")
-      _ ← EitherT.cond[F](verify, (), CryptoError("Signature is not verified"))
-    } yield ()
+  val verify: Crypto.Func[(KeyPair.Public, Signature, ByteVector), Unit] =
+    Crypto {
+      case (
+          pubKey,
+          signature,
+          message
+          ) ⇒
+        for {
+          hash ← JsCryptoHasher.hash(message, hasher)
+          verify ← Crypto.tryUnit(
+            Supercop.verify(signature.sign.toJsBuffer, ByteVector(hash).toJsBuffer, pubKey.value.toJsBuffer)
+          )("Cannot verify message")
+          _ ← Either.cond(verify, (), CryptoError("Signature is not verified"))
+        } yield ()
+    }
 
   val generateKeyPair: Crypto.KeyPairGenerator =
-    new Crypto.Func[Option[Array[Byte]], KeyPair] {
-      override def apply[F[_]](
-        input: Option[Array[Byte]]
-      )(implicit F: Monad[F]): EitherT[F, CryptoError, KeyPair] = {
-        for {
-          seed ← nonFatalHandling(input.map(ByteVector(_).toJsBuffer).getOrElse(Supercop.createSeed()))(
-            "Error on seed creation"
+    Crypto[Option[Array[Byte]], KeyPair] { input ⇒
+      for {
+        seed ← Crypto.tryUnit(input.map(ByteVector(_).toJsBuffer).getOrElse(Supercop.createSeed()))(
+          "Error on seed creation"
+        )
+        jsKeyPair ← Crypto.tryUnit(Supercop.createKeyPair(seed))("Error on key pair generation.")
+        keyPair ← Crypto.tryUnit(
+          KeyPair.fromByteVectors(
+            ByteVector.fromValidHex(jsKeyPair.publicKey.toString("hex")),
+            ByteVector.fromValidHex(jsKeyPair.secretKey.toString("hex"))
           )
-          jsKeyPair ← nonFatalHandling(Supercop.createKeyPair(seed))("Error on key pair generation.")
-          keyPair ← nonFatalHandling(
-            KeyPair.fromByteVectors(
-              ByteVector.fromValidHex(jsKeyPair.publicKey.toString("hex")),
-              ByteVector.fromValidHex(jsKeyPair.secretKey.toString("hex"))
-            )
-          )("Error on decoding public and secret keys")
-        } yield keyPair
-      }
+        )("Error on decoding public and secret keys")
+      } yield keyPair
     }
 }
 
@@ -82,28 +81,21 @@ object Ed25519 {
 
   val ed25519: Ed25519 = new Ed25519(None)
 
-  val signAlgo: SignAlgo = {
+  val signAlgo: SignAlgo =
     SignAlgo(
       name = "ed25519",
       generateKeyPair = ed25519.generateKeyPair,
       signer = kp ⇒
         Signer(
           kp.publicKey,
-          new Crypto.Func[ByteVector, Signature] {
-            override def apply[F[_]](
-              input: ByteVector
-            )(implicit F: Monad[F]): EitherT[F, CryptoError, Signature] =
-              ed25519.sign(kp, input)
-          }
-      ),
+          ed25519.sign.local(kp -> _)
+        ),
       checker = pk ⇒
-        new SignatureChecker {
-          override def check[F[_]: Monad](
-            signature: fluence.crypto.signature.Signature,
-            plain: ByteVector
-          ): EitherT[F, CryptoError, Unit] =
-            ed25519.verify(pk, signature, plain)
-      }
+        SignatureChecker(
+          ed25519.verify.local {
+            case (signature, plain) ⇒ (pk, signature, plain)
+          }
+        )
     )
-  }
+
 }

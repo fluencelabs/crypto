@@ -19,9 +19,9 @@ package fluence.crypto
 
 import java.security.SecureRandom
 
-import cats.Monad
-import cats.data.EitherT
+import cats.data.Kleisli
 import fluence.crypto.signature.{SignAlgo, Signature, SignatureChecker, Signer}
+import cats.syntax.either._
 import scodec.bits.ByteVector
 
 import scala.language.higherKinds
@@ -31,26 +31,34 @@ object DumbCrypto {
   lazy val signAlgo: SignAlgo =
     SignAlgo(
       "dumb",
-      Crypto.liftFunc { seedOpt ⇒
+      Kleisli[Crypto.Result, Option[Array[Byte]], KeyPair] { seedOpt ⇒
         val seed = seedOpt.getOrElse {
           new SecureRandom().generateSeed(32)
         }
-        KeyPair.fromBytes(seed, seed)
+        KeyPair.fromBytes(seed, seed).asRight
       },
-      keyPair ⇒ Signer(keyPair.publicKey, Crypto.liftFunc(plain ⇒ Signature(plain.reverse))),
+      keyPair ⇒
+        Signer(
+          keyPair.publicKey,
+          Kleisli[Crypto.Result, ByteVector, Signature](plain ⇒ Signature(plain.reverse).asRight)
+        ),
       publicKey ⇒
-        new SignatureChecker {
-          override def check[F[_]: Monad](signature: Signature, plain: ByteVector): EitherT[F, CryptoError, Unit] =
-            EitherT.cond[F](signature.sign == plain.reverse, (), CryptoError("Signatures mismatch"))
-      }
+        SignatureChecker(
+          Kleisli {
+            case (sgn, msg) ⇒ Either.cond(sgn.sign == msg.reverse, (), CryptoError("Signatures mismatch"))
+          }
+        )
     )
 
   lazy val cipherString: Crypto.Cipher[String] =
-    Crypto.liftB(_.getBytes, bytes ⇒ new String(bytes))
+    Crypto.Cipher(
+      Kleisli[Crypto.Result, String, Array[Byte]](_.getBytes.asRight[CryptoError]),
+      Kleisli[Crypto.Result, Array[Byte], String](bytes ⇒ new String(bytes).asRight[CryptoError])
+    )
 
   lazy val noOpHasher: Crypto.Hasher[Array[Byte], Array[Byte]] =
-    Crypto.identityFunc[Array[Byte]]
+    Kleisli[Crypto.Result, Array[Byte], Array[Byte]](_.asRight)
 
   lazy val testHasher: Crypto.Hasher[Array[Byte], Array[Byte]] =
-    Crypto.liftFunc(bytes ⇒ ("H<" + new String(bytes) + ">").getBytes())
+    Kleisli[Crypto.Result, Array[Byte], Array[Byte]](bytes ⇒ ("H<" + new String(bytes) + ">").getBytes().asRight)
 }

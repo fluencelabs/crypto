@@ -17,12 +17,8 @@
 
 package fluence.crypto
 
-import java.io.File
-
-import cats.data.EitherT
-import cats.instances.try_._
 import fluence.crypto.ecdsa.Ecdsa
-import fluence.crypto.signature.Signature
+import fluence.crypto.signature.{SignAlgo, Signature}
 import org.scalatest.{Matchers, WordSpec}
 import scodec.bits.ByteVector
 
@@ -34,69 +30,57 @@ class EcdsaSpec extends WordSpec with Matchers {
 
   def rndByteVector(size: Int) = ByteVector(rndBytes(size))
 
-  private implicit class TryEitherTExtractor[A <: Throwable, B](et: EitherT[Try, A, B]) {
-
-    def extract: B =
-      et.value.map {
-        case Left(e) ⇒ fail(e) // for making test fail message more describable
-        case Right(v) ⇒ v
-      }.get
-
-    def isOk: Boolean = et.value.fold(_ ⇒ false, _.isRight)
-  }
-
   "ecdsa algorithm" should {
     "correct sign and verify data" in {
-      val algorithm = Ecdsa.ecdsa_secp256k1_sha256
+      val algorithm: SignAlgo = Ecdsa.signAlgo
 
-      val keys = algorithm.generateKeyPair.unsafe(None)
+      val keys = algorithm.generateKeyPair(None).right.get
       val pubKey = keys.publicKey
       val data = rndByteVector(10)
-      val sign = algorithm.sign[Try](keys, data).extract
+      val sign = algorithm.signer(keys).sign(data).right.get
 
-      algorithm.verify[Try](pubKey, sign, data).isOk shouldBe true
+      algorithm.checker(pubKey).check((sign, data)).isRight shouldBe true
 
       val randomData = rndByteVector(10)
-      val randomSign = algorithm.sign(keys, randomData).extract
+      val randomSign = algorithm.signer(keys).sign(randomData).right.get
 
-      algorithm.verify(pubKey, randomSign, data).isOk shouldBe false
+      algorithm.checker(pubKey).check(randomSign -> data).isRight shouldBe false
 
-      algorithm.verify(pubKey, sign, randomData).isOk shouldBe false
+      algorithm.checker(pubKey).check(sign -> randomData).isRight shouldBe false
     }
 
     "correctly work with signer and checker" in {
-      val algo = Ecdsa.signAlgo
-      val keys = algo.generateKeyPair.unsafe(None)
+      val algo: SignAlgo = Ecdsa.signAlgo
+      val keys = algo.generateKeyPair(None).right.get
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)
 
       val data = rndByteVector(10)
-      val sign = signer.sign(data).extract
+      val sign = signer.sign(data).right.get
 
-      checker.check(sign, data).isOk shouldBe true
+      checker.check(sign -> data).isRight shouldBe true
 
-      val randomSign = signer.sign(rndByteVector(10)).extract
-      checker.check(randomSign, data).isOk shouldBe false
+      val randomSign = signer.sign(rndByteVector(10)).right.get
+      checker.check(randomSign -> data).isRight shouldBe false
     }
 
     "throw an errors on invalid data" in {
-      val algo = Ecdsa.signAlgo
-      val keys = algo.generateKeyPair.unsafe(None)
+      val algo: SignAlgo = Ecdsa.signAlgo
+      val keys = algo.generateKeyPair(None).right.get
       val signer = algo.signer(keys)
       val checker = algo.checker(keys.publicKey)
       val data = rndByteVector(10)
 
-      val sign = signer.sign(data).extract
+      val sign = signer.sign(data).right.get
 
       the[CryptoError] thrownBy {
-        checker.check(Signature(rndByteVector(10)), data).value.flatMap(_.toTry).get
+        checker.check(Signature(rndByteVector(10)) -> data).toTry.get
       }
       val invalidChecker = algo.checker(KeyPair.fromByteVectors(rndByteVector(10), rndByteVector(10)).publicKey)
       the[CryptoError] thrownBy {
         invalidChecker
-          .check(sign, data)
-          .value
-          .flatMap(_.toTry)
+          .check(sign -> data)
+          .toTry
           .get
       }
     }

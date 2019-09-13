@@ -27,11 +27,11 @@ class NoOpCryptSpec extends WordSpec with Matchers {
       val noOpCrypt = DumbCrypto.cipherString
 
       val emptyString = ""
-      noOpCrypt.inverse.unsafe(noOpCrypt.direct.unsafe(emptyString)) shouldBe emptyString
+      noOpCrypt.decrypt(noOpCrypt.encrypt(emptyString).right.get).right.get shouldBe emptyString
       val nonEmptyString = "some text here"
-      noOpCrypt.inverse.unsafe(noOpCrypt.direct.unsafe(nonEmptyString)) shouldBe nonEmptyString
+      noOpCrypt.decrypt(noOpCrypt.encrypt(nonEmptyString).right.get).right.get shouldBe nonEmptyString
       val byteArray = Array(1.toByte, 23.toByte, 45.toByte)
-      noOpCrypt.direct.unsafe(noOpCrypt.inverse.unsafe(byteArray)) shouldBe byteArray
+      noOpCrypt.encrypt(noOpCrypt.decrypt(byteArray).right.get).right.get shouldBe byteArray
     }
   }
 }
