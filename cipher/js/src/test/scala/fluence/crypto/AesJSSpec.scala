@@ -70,15 +70,15 @@ class AesJSSpec extends WordSpec with Matchers with slogging.LazyLogging {
       checkCryptoError(aesWrongSalt.decrypt(crypted), str)
     }
 
+    /**
+     * Checks if there is a crypto error or result is not equal with source result.
+     */
     def checkCryptoError(tr: Crypto.Result[Array[Byte]], msg: Array[Byte])(implicit pos: Position): Assertion = {
       tr.map { r ⇒
         !(r sameElements msg)
       }.fold(
         _ ⇒ true,
-        e ⇒ {
-          logger.error("Unexpected error", e)
-          false
-        }
+        res => res
       ) shouldBe true
     }
   }

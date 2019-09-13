@@ -58,7 +58,7 @@ class Ed25519Spec extends WordSpec with Matchers {
       val data = rndByteVector(10)
       val sign = signer.sign(data).right.get
 
-      checker.check(sign -> data).contains(true) shouldBe true
+      checker.check(sign -> data).isRight shouldBe true
 
       val randomSign = signer.sign(rndByteVector(10)).right.get
       checker.check(randomSign, data).contains(true) shouldBe false
