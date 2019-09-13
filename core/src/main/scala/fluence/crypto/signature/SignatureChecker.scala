@@ -23,4 +23,4 @@ import scodec.bits.ByteVector
 
 import scala.language.higherKinds
 
-case class SignatureChecker(check: Kleisli[Crypto.Err, (Signature, ByteVector), Unit])
+case class SignatureChecker(check: Kleisli[Crypto.Result, (Signature, ByteVector), Unit])

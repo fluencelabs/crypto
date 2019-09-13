@@ -22,27 +22,27 @@ import cats.data.Kleisli
 import scala.util.Try
 
 object Crypto {
-  type Err[T] = Either[CryptoError, T]
+  type Result[T] = Either[CryptoError, T]
 
-  type Hasher[A, B] = Kleisli[Err, A, B]
+  type Hasher[A, B] = Kleisli[Result, A, B]
 
-  type Func[A, B] = Kleisli[Err, A, B]
+  type Func[A, B] = Kleisli[Result, A, B]
 
   case class Cipher[A](
-                      encrypt: Kleisli[Err, A, Array[Byte]],
-                      decrypt: Kleisli[Err, Array[Byte], A]
-                      )
+    encrypt: Kleisli[Result, A, Array[Byte]],
+    decrypt: Kleisli[Result, Array[Byte], A]
+  )
 
-  type KeyPairGenerator = Kleisli[Err, Option[Array[Byte]], KeyPair]
+  type KeyPairGenerator = Kleisli[Result, Option[Array[Byte]], KeyPair]
 
-  def apply[A, B](fn: A ⇒ Err[B]): Func[A, B] = Kleisli[Err, A, B](fn)
+  def apply[A, B](fn: A ⇒ Result[B]): Func[A, B] = Kleisli[Result, A, B](fn)
 
   def tryFn[A, B](fn: A ⇒ B)(errorText: String): Crypto.Func[A, B] =
     Crypto(a ⇒ tryUnit(fn(a))(errorText))
 
-  def tryUnit[B](fn:  ⇒ B)(errorText: String): Err[ B] =
+  def tryUnit[B](fn: ⇒ B)(errorText: String): Result[B] =
     Try(fn).toEither.left.map(t ⇒ CryptoError(errorText, Some(t)))
 
   def cond[B](ifTrue: ⇒ B, errorText: ⇒ String): Crypto.Func[Boolean, B] =
-    Crypto( Either.cond(_, ifTrue, CryptoError(errorText)))
+    Crypto(Either.cond(_, ifTrue, CryptoError(errorText)))
 }

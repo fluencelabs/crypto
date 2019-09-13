@@ -39,25 +39,25 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
    *
    */
   val restoreKeyPair: Crypto.Func[KeyPair.Secret, KeyPair] =
-    Crypto.tryFn[KeyPair.Secret, KeyPair] {secretKey ⇒
-        val key = ec.keyFromPrivate(secretKey.value.toHex, "hex")
-        val publicHex = key.getPublic(compact = true, "hex")
-        val secretHex = key.getPrivate("hex")
-        val public = ByteVector.fromValidHex(publicHex)
-        val secret = ByteVector.fromValidHex(secretHex)
-        KeyPair.fromByteVectors(public, secret)
-      }("Incorrect secret key format")
+    Crypto.tryFn[KeyPair.Secret, KeyPair] { secretKey ⇒
+      val key = ec.keyFromPrivate(secretKey.value.toHex, "hex")
+      val publicHex = key.getPublic(compact = true, "hex")
+      val secretHex = key.getPrivate("hex")
+      val public = ByteVector.fromValidHex(publicHex)
+      val secret = ByteVector.fromValidHex(secretHex)
+      KeyPair.fromByteVectors(public, secret)
+    }("Incorrect secret key format")
 
   val generateKeyPair: Crypto.KeyPairGenerator =
-    Crypto.tryFn[Option[Array[Byte]], KeyPair] {input ⇒
-          val seedJs = input.map(bs ⇒ js.Dynamic.literal(entropy = bs.toJSArray))
-          val key = ec.genKeyPair(seedJs)
-          val publicHex = key.getPublic(compact = true, "hex")
-          val secretHex = key.getPrivate("hex")
-          val public = ByteVector.fromValidHex(publicHex)
-          val secret = ByteVector.fromValidHex(secretHex)
-          KeyPair.fromByteVectors(public, secret)
-        }("Failed to generate key pair")
+    Crypto.tryFn[Option[Array[Byte]], KeyPair] { input ⇒
+      val seedJs = input.map(bs ⇒ js.Dynamic.literal(entropy = bs.toJSArray))
+      val key = ec.genKeyPair(seedJs)
+      val publicHex = key.getPublic(compact = true, "hex")
+      val secretHex = key.getPrivate("hex")
+      val public = ByteVector.fromValidHex(publicHex)
+      val secret = ByteVector.fromValidHex(secretHex)
+      KeyPair.fromByteVectors(public, secret)
+    }("Failed to generate key pair")
 
   val sign: Crypto.Func[(KeyPair, ByteVector), Signature] =
     Crypto {
@@ -74,10 +74,10 @@ class Ecdsa(ec: EC, hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
   val verify: Crypto.Func[(KeyPair.Public, Signature, ByteVector), Unit] =
     Crypto {
       case (
-        pubKey,
-        signature,
-        message
-      ) ⇒
+          pubKey,
+          signature,
+          message
+          ) ⇒
         for {
           public ← Crypto.tryUnit {
             val hex = pubKey.value.toHex
@@ -100,13 +100,13 @@ object Ecdsa {
     signer = kp ⇒
       Signer(
         kp.publicKey,
-            ecdsa_secp256k1_sha256.sign.local(kp -> _)
-    ),
+        ecdsa_secp256k1_sha256.sign.local(kp -> _)
+      ),
     checker = pk ⇒
-      SignatureChecker (
-          ecdsa_secp256k1_sha256.verify.local{
-            case (signature, plain) ⇒ (pk, signature, plain)
-          }
+      SignatureChecker(
+        ecdsa_secp256k1_sha256.verify.local {
+          case (signature, plain) ⇒ (pk, signature, plain)
+        }
       )
   )
 }

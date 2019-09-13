@@ -35,7 +35,7 @@ case class SignAlgo(
   name: String,
   generateKeyPair: Crypto.KeyPairGenerator,
   signer: SignAlgo.SignerFn,
-  implicit val checker: SignAlgo.CheckerFn,
+  implicit val checker: SignAlgo.CheckerFn
 )
 
 object SignAlgo {
@@ -47,7 +47,7 @@ object SignAlgo {
    * For CheckerFn, builds a function that takes PubKeyAndSignature along with plain data, and checks the signature.
    */
   def checkerFunc(fn: CheckerFn): Crypto.Func[(PubKeyAndSignature, ByteVector), Unit] =
-    Kleisli{
+    Kleisli {
       case (pks, msg) ⇒
         fn(pks.publicKey).check.run(pks.signature -> msg)
     }

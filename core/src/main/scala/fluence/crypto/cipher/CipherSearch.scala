@@ -43,9 +43,9 @@ object CipherSearch {
   def binarySearch[A, B](coll: IndexedSeq[A], decrypt: Crypto.Func[A, B])(
     implicit ordering: Ordering[B]
   ): Crypto.Func[B, SearchResult] =
-    Kleisli {
-      input ⇒ {
-        implicitly[Monad[Crypto.Err]].tailRecM((0, coll.length)) {
+    Kleisli { input ⇒
+      {
+        implicitly[Monad[Crypto.Result]].tailRecM((0, coll.length)) {
           case (from, to) if from == to ⇒ Right(InsertionPoint(from)).asRight
           case (from, to) ⇒
             val idx = from + (to - from - 1) / 2

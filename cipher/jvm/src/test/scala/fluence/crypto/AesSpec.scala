@@ -69,7 +69,7 @@ class AesSpec extends WordSpec with Matchers with slogging.LazyLogging {
     }
   }
 
-  def checkCryptoError(tr: Crypto.Err[Array[Byte]])(implicit pos: Position): Assertion = {
+  def checkCryptoError(tr: Crypto.Result[Array[Byte]])(implicit pos: Position): Assertion = {
     tr.isLeft shouldBe true
   }
 

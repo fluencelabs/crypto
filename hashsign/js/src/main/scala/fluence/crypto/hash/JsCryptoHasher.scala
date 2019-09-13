@@ -32,16 +32,16 @@ object JsCryptoHasher {
 
   lazy val Sha256: Crypto.Hasher[Array[Byte], Array[Byte]] =
     Crypto.tryFn[Array[Byte], Array[Byte]] { msg ⇒
-        val sha256 = new SHA256()
-        sha256.update(new Uint8Array(msg.toJSArray))
-        ByteVector.fromValidHex(sha256.digest("hex")).toArray
+      val sha256 = new SHA256()
+      sha256.update(new Uint8Array(msg.toJSArray))
+      ByteVector.fromValidHex(sha256.digest("hex")).toArray
     }("Cannot calculate Sha256 hash")
 
   lazy val Sha1: Crypto.Hasher[Array[Byte], Array[Byte]] =
     Crypto.tryFn[Array[Byte], Array[Byte]] { msg ⇒
-        val sha1 = new SHA1()
-        sha1.update(new Uint8Array(msg.toJSArray))
-        ByteVector.fromValidHex(sha1.digest("hex")).toArray
+      val sha1 = new SHA1()
+      sha1.update(new Uint8Array(msg.toJSArray))
+      ByteVector.fromValidHex(sha1.digest("hex")).toArray
     }("Cannot calculate Sha256 hash")
 
   /**
@@ -50,15 +50,14 @@ object JsCryptoHasher {
    * @return hash in Scala array
    */
   val hash: Crypto.Func[(ByteVector, Option[Crypto.Hasher[Array[Byte], Array[Byte]]]), Array[Byte]] =
-    Crypto{
-    case (message, hasher) ⇒
-
-    val arr = message.toArray
-    hasher
-      .fold(arr.asRight[CryptoError]) { h ⇒
-        h(arr)
-      }
-  }
+    Crypto {
+      case (message, hasher) ⇒
+        val arr = message.toArray
+        hasher
+          .fold(arr.asRight[CryptoError]) { h ⇒
+            h(arr)
+          }
+    }
 
   /**
    * Calculates hash of message.

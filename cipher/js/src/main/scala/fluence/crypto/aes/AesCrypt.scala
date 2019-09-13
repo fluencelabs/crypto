@@ -52,24 +52,24 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) {
   private val encryptData =
     Crypto.tryFn[(Array[Byte], Key), Array[Byte]] {
       case (data: Array[Byte], key: Key) ⇒
-      //transform data to JS type
-      val wordArray = CryptoJS.lib.WordArray.create(new Int8Array(data.toJSArray))
-      val iv = if (withIV) Some(generateIV) else None
-      val cryptOptions = CryptOptions(iv = iv, padding = pad, mode = mode)
-      //encryption return base64 string, transform it to byte array
-      val crypted = ByteVector.fromValidBase64(aes.encrypt(wordArray, key, cryptOptions).toString)
-      //IV also needs to be transformed in byte array
-      val byteIv = iv.map(i ⇒ ByteVector.fromValidHex(i.toString))
-      byteIv.map(_.toArray ++ crypted.toArray).getOrElse(crypted.toArray)
+        //transform data to JS type
+        val wordArray = CryptoJS.lib.WordArray.create(new Int8Array(data.toJSArray))
+        val iv = if (withIV) Some(generateIV) else None
+        val cryptOptions = CryptOptions(iv = iv, padding = pad, mode = mode)
+        //encryption return base64 string, transform it to byte array
+        val crypted = ByteVector.fromValidBase64(aes.encrypt(wordArray, key, cryptOptions).toString)
+        //IV also needs to be transformed in byte array
+        val byteIv = iv.map(i ⇒ ByteVector.fromValidHex(i.toString))
+        byteIv.map(_.toArray ++ crypted.toArray).getOrElse(crypted.toArray)
     }("Cannot encrypt data")
 
   private val decryptData: Crypto.Func[(Key, String, Option[String]), ByteVector] =
     Crypto.tryFn[(Key, String, Option[String]), ByteVector] {
       case (key: Key, base64Data: String, iv: Option[String]) ⇒
-      //parse IV to WordArray JS format
-      val cryptOptions = CryptOptions(iv = iv.map(i ⇒ CryptoJS.enc.Hex.parse(i)), padding = pad, mode = mode)
-      val dec = aes.decrypt(base64Data, key, cryptOptions)
-      ByteVector.fromValidHex(dec.toString)
+        //parse IV to WordArray JS format
+        val cryptOptions = CryptOptions(iv = iv.map(i ⇒ CryptoJS.enc.Hex.parse(i)), padding = pad, mode = mode)
+        val dec = aes.decrypt(base64Data, key, cryptOptions)
+        ByteVector.fromValidHex(dec.toString)
     }("Cannot decrypt data")
 
   /**
@@ -77,7 +77,7 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) {
    * @return IV in hex and data in base64
    */
   private val detachData: Crypto.Func[Array[Byte], (Option[String], String)] =
-    Crypto.tryFn {cipherText: Array[Byte] ⇒
+    Crypto.tryFn { cipherText: Array[Byte] ⇒
       val dataWithParams = if (withIV) {
         val ivDec = ByteVector(cipherText.slice(0, IV_SIZE)).toHex
         val encMessage = cipherText.slice(IV_SIZE, cipherText.length)
@@ -92,31 +92,31 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) {
    * Hash password with salt `iterationCount` times
    */
   private val initSecretKey: Crypto.Func[Unit, Key] =
-    Crypto.tryFn {_: Unit ⇒
+    Crypto.tryFn { _: Unit ⇒
       // get raw key from password and salt
       val keyOption = KeyOptions(BITS, iterations = iterationCount, hasher = CryptoJS.algo.SHA256)
       CryptoJS.PBKDF2(new String(password), salt, keyOption)
     }("Cannot init secret key")
 
   val decrypt: Crypto.Func[Array[Byte], Array[Byte]] =
-    Crypto {
-      input ⇒
-        for {
-          detachedData ← detachData(input)
-          (iv, base64) = detachedData
-          key ← initSecretKey(())
-          decData ← decryptData((key, base64, iv))
-          _ ← Crypto[Boolean, Unit](Either.cond(_, (), CryptoError("Cannot decrypt message with this password.")))(decData.nonEmpty )
-        } yield decData.toArray
+    Crypto { input ⇒
+      for {
+        detachedData ← detachData(input)
+        (iv, base64) = detachedData
+        key ← initSecretKey(())
+        decData ← decryptData((key, base64, iv))
+        _ ← Crypto[Boolean, Unit](Either.cond(_, (), CryptoError("Cannot decrypt message with this password.")))(
+          decData.nonEmpty
+        )
+      } yield decData.toArray
     }
 
   val encrypt: Crypto.Func[Array[Byte], Array[Byte]] =
-    Crypto[Array[Byte], Array[Byte]] {
-      input ⇒
-        for {
-          key ← initSecretKey( () )
-          encrypted ← encryptData(input -> key)
-        } yield encrypted
+    Crypto[Array[Byte], Array[Byte]] { input ⇒
+      for {
+        key ← initSecretKey(())
+        encrypted ← encryptData(input -> key)
+      } yield encrypted
     }
 }
 

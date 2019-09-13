@@ -45,57 +45,55 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
    * @return key pair
    */
   val restorePairFromSecret: Crypto.Func[Secret, KeyPair] =
-    Crypto.tryFn[Secret, KeyPair] {
-      sk ⇒
-        val secret = new Ed25519PrivateKeyParameters(sk.bytes, 0)
-        KeyPair.fromBytes(secret.generatePublicKey().getEncoded, sk.bytes)
-      }("Could not generate KeyPair from private key")
+    Crypto.tryFn[Secret, KeyPair] { sk ⇒
+      val secret = new Ed25519PrivateKeyParameters(sk.bytes, 0)
+      KeyPair.fromBytes(secret.generatePublicKey().getEncoded, sk.bytes)
+    }("Could not generate KeyPair from private key")
 
   private val signMessage: Crypto.Func[(Array[Byte], Array[Byte]), Array[Byte]] =
     Crypto.tryFn[(Array[Byte], Array[Byte]), Array[Byte]] {
       case (
-        privateKey,
-        message
-        ) ⇒
+          privateKey,
+          message
+          ) ⇒
         val privKey = new Ed25519PrivateKeyParameters(privateKey, 0)
         val signer = new Ed25519Signer
         signer.init(true, privKey)
         signer.update(message, 0, message.length)
         signer.generateSignature()
-      }("Cannot sign message")
+    }("Cannot sign message")
 
   val sign: Crypto.Func[(KeyPair, ByteVector), signature.Signature] =
     signMessage
       .map(bb ⇒ fluence.crypto.signature.Signature(ByteVector(bb)))
       .local {
-          case  (keyPair, message) ⇒
-            keyPair.secretKey.bytes -> message.toArray
-        }
+        case (keyPair, message) ⇒
+          keyPair.secretKey.bytes -> message.toArray
+      }
 
   private val verifySign: Crypto.Func[(Array[Byte], Array[Byte], Array[Byte]), Unit] =
     Crypto.tryFn[(Array[Byte], Array[Byte], Array[Byte]), Boolean] {
-        case (
+      case (
           publicKey,
           signature,
-          message,
+          message
           ) ⇒
         val pubKey = new Ed25519PublicKeyParameters(publicKey, 0)
         val signer = new Ed25519Signer
         signer.init(false, pubKey)
         signer.update(message, 0, message.length)
         signer.verifySignature(signature)
-      }("Cannot verify message") andThen Crypto.cond((), "Signature is not verified")
+    }("Cannot verify message") andThen Crypto.cond((), "Signature is not verified")
 
   val verify: Crypto.Func[(KeyPair.Public, signature.Signature, ByteVector), Unit] =
-    verifySign
-        .local {
-          case (
-            publicKey,
-            signature,
-            message
-            ) ⇒
-            (publicKey.bytes, signature.bytes, message.toArray)
-        }
+    verifySign.local {
+      case (
+          publicKey,
+          signature,
+          message
+          ) ⇒
+        (publicKey.bytes, signature.bytes, message.toArray)
+    }
 
   private def getKeyPairGenerator =
     Crypto.tryUnit(
@@ -105,26 +103,28 @@ class Ed25519(strength: Int) extends JavaAlgorithm {
     )
 
   val generateKeyPair: Crypto.KeyPairGenerator =
-    Crypto[Option[Array[Byte]], KeyPair] {
-      input ⇒
-        getKeyPairGenerator.flatMap {g ⇒
-          val random = input.map(new SecureRandom(_)).getOrElse(new SecureRandom())
-          val keyParameters = new KeyGenerationParameters(random, strength)
-          g.init(keyParameters)
-          Either.fromOption(Option(g.generateKeyPair()), CryptoError("Generated keypair is null"))
-        }.flatMap((p: AsymmetricCipherKeyPair) ⇒
+    Crypto[Option[Array[Byte]], KeyPair] { input ⇒
+      getKeyPairGenerator.flatMap { g ⇒
+        val random = input.map(new SecureRandom(_)).getOrElse(new SecureRandom())
+        val keyParameters = new KeyGenerationParameters(random, strength)
+        g.init(keyParameters)
+        Either.fromOption(Option(g.generateKeyPair()), CryptoError("Generated keypair is null"))
+      }.flatMap(
+        (p: AsymmetricCipherKeyPair) ⇒
           Crypto.tryUnit {
-              val pk = p.getPublic match {
-                case pk: Ed25519PublicKeyParameters => pk.getEncoded
-                case p => throw new ClassCastException(s"Cannot cast public key (${p.getClass}) to Ed25519PublicKeyParameters")
-              }
-              val sk = p.getPrivate match {
-                case sk: Ed25519PrivateKeyParameters => sk.getEncoded
-                case s => throw new ClassCastException(s"Cannot cast private key (${p.getClass}) to Ed25519PrivateKeyParameters")
-              }
-              KeyPair.fromBytes(pk, sk)
+            val pk = p.getPublic match {
+              case pk: Ed25519PublicKeyParameters => pk.getEncoded
+              case p =>
+                throw new ClassCastException(s"Cannot cast public key (${p.getClass}) to Ed25519PublicKeyParameters")
+            }
+            val sk = p.getPrivate match {
+              case sk: Ed25519PrivateKeyParameters => sk.getEncoded
+              case s =>
+                throw new ClassCastException(s"Cannot cast private key (${p.getClass}) to Ed25519PrivateKeyParameters")
+            }
+            KeyPair.fromBytes(pk, sk)
           }("Could not generate KeyPair")
-        )
+      )
     }
 }
 
@@ -154,11 +154,10 @@ object Ed25519 {
       signer = kp ⇒
         Signer(
           kp.publicKey,
-          Crypto[ByteVector, signature.Signature] {
-            input ⇒
-              algo.sign(kp -> input)
+          Crypto[ByteVector, signature.Signature] { input ⇒
+            algo.sign(kp -> input)
           }
-      ),
+        ),
       checker = pk ⇒
         SignatureChecker(
           Crypto {

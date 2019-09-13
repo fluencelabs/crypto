@@ -31,30 +31,34 @@ object DumbCrypto {
   lazy val signAlgo: SignAlgo =
     SignAlgo(
       "dumb",
-      Kleisli[Crypto.Err, Option[Array[Byte]], KeyPair] { seedOpt ⇒
+      Kleisli[Crypto.Result, Option[Array[Byte]], KeyPair] { seedOpt ⇒
         val seed = seedOpt.getOrElse {
           new SecureRandom().generateSeed(32)
         }
         KeyPair.fromBytes(seed, seed).asRight
       },
-      keyPair ⇒ Signer(keyPair.publicKey, Kleisli[Crypto.Err, ByteVector, Signature](plain ⇒ Signature(plain.reverse).asRight)),
+      keyPair ⇒
+        Signer(
+          keyPair.publicKey,
+          Kleisli[Crypto.Result, ByteVector, Signature](plain ⇒ Signature(plain.reverse).asRight)
+        ),
       publicKey ⇒
         SignatureChecker(
-          Kleisli{
+          Kleisli {
             case (sgn, msg) ⇒ Either.cond(sgn.sign == msg.reverse, (), CryptoError("Signatures mismatch"))
           }
-  )
+        )
     )
 
   lazy val cipherString: Crypto.Cipher[String] =
     Crypto.Cipher(
-      Kleisli[Crypto.Err, String, Array[Byte]](_.getBytes.asRight[CryptoError]),
-      Kleisli[Crypto.Err, Array[Byte], String](bytes ⇒ new String(bytes).asRight[CryptoError])
+      Kleisli[Crypto.Result, String, Array[Byte]](_.getBytes.asRight[CryptoError]),
+      Kleisli[Crypto.Result, Array[Byte], String](bytes ⇒ new String(bytes).asRight[CryptoError])
     )
 
   lazy val noOpHasher: Crypto.Hasher[Array[Byte], Array[Byte]] =
-    Kleisli[Crypto.Err, Array[Byte], Array[Byte]](_.asRight)
+    Kleisli[Crypto.Result, Array[Byte], Array[Byte]](_.asRight)
 
   lazy val testHasher: Crypto.Hasher[Array[Byte], Array[Byte]] =
-    Kleisli[Crypto.Err, Array[Byte], Array[Byte]](bytes ⇒ ("H<" + new String(bytes) + ">").getBytes().asRight)
+    Kleisli[Crypto.Result, Array[Byte], Array[Byte]](bytes ⇒ ("H<" + new String(bytes) + ">").getBytes().asRight)
 }

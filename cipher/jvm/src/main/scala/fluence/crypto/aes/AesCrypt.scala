@@ -62,18 +62,13 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
     iv
   }
 
-
-
-
-
-
   /**
    * Key spec initialization
    */
-  private val initSecretKey: Crypto.Func[(/*password*/Array[Char], /*salt*/Array[Byte]), Array[Byte]] =
+  private val initSecretKey: Crypto.Func[( /*password*/ Array[Char], /*salt*/ Array[Byte]), Array[Byte]] =
     Crypto.tryFn[(Array[Char], Array[Byte]), Array[Byte]] {
       case (password, salt) ⇒
-      PBEParametersGenerator.PKCS5PasswordToUTF8Bytes(password)
+        PBEParametersGenerator.PKCS5PasswordToUTF8Bytes(password)
     }("Cannot init secret key")
 
   /**
@@ -85,24 +80,24 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
   private val setupAesCipher: Crypto.Func[(CipherParameters, Boolean), PaddedBufferedBlockCipher] =
     Crypto.tryFn[(CipherParameters, Boolean), PaddedBufferedBlockCipher] {
       case (params, encrypt) ⇒
-      // setup AES cipher in CBC mode with PKCS7 padding
-      val padding = new PKCS7Padding
-      val cipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESEngine), padding)
-      cipher.reset()
-      cipher.init(encrypt, params)
+        // setup AES cipher in CBC mode with PKCS7 padding
+        val padding = new PKCS7Padding
+        val cipher = new PaddedBufferedBlockCipher(new CBCBlockCipher(new AESEngine), padding)
+        cipher.reset()
+        cipher.init(encrypt, params)
 
-      cipher
+        cipher
     }("Cannot setup aes cipher")
 
   private val cipherBytes: Crypto.Func[(Array[Byte], PaddedBufferedBlockCipher), Array[Byte]] =
     Crypto.tryFn[(Array[Byte], PaddedBufferedBlockCipher), Array[Byte]] {
       case (data, cipher) ⇒
-      // create a temporary buffer to decode into (it'll include padding)
-      val buf = new Array[Byte](cipher.getOutputSize(data.length))
-      val outputLength = cipher.processBytes(data, 0, data.length, buf, 0)
-      val lastBlockLength = cipher.doFinal(buf, outputLength)
-      //remove padding
-      buf.slice(0, outputLength + lastBlockLength)
+        // create a temporary buffer to decode into (it'll include padding)
+        val buf = new Array[Byte](cipher.getOutputSize(data.length))
+        val outputLength = cipher.processBytes(data, 0, data.length, buf, 0)
+        val lastBlockLength = cipher.doFinal(buf, outputLength)
+        //remove padding
+        buf.slice(0, outputLength + lastBlockLength)
     }("Error in cipher processing")
 
   /**
@@ -115,10 +110,10 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
   private val processData: Crypto.Func[(DataWithParams, Option[Array[Byte]], Boolean), Array[Byte]] =
     Crypto {
       case (dataWithParams, addData, encrypt) ⇒
-      for {
-        cipher ← setupAesCipher(dataWithParams.params -> encrypt)
-        buf ← cipherBytes(dataWithParams.data, cipher)
-      } yield addData.map(_ ++ buf).getOrElse(buf)
+        for {
+          cipher ← setupAesCipher(dataWithParams.params -> encrypt)
+          buf ← cipherBytes(dataWithParams.data, cipher)
+        } yield addData.map(_ ++ buf).getOrElse(buf)
     }
 
   /**
@@ -127,15 +122,13 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
   private val detachIV: Crypto.Func[(Array[Byte], Int), DetachedData] =
     Crypto.tryFn[(Array[Byte], Int), DetachedData] {
       case (data, ivSize) ⇒
-      val ivData = data.slice(0, ivSize)
-      val encData = data.slice(ivSize, data.length)
-      DetachedData(ivData, encData)
+        val ivData = data.slice(0, ivSize)
+        val encData = data.slice(ivSize, data.length)
+        DetachedData(ivData, encData)
     }("Cannot detach data and IV")
 
-
   private val params: Crypto.Func[Array[Byte], KeyParameter] =
-    Crypto.tryFn {
-      key: Array[Byte] ⇒
+    Crypto.tryFn { key: Array[Byte] ⇒
       val pGen = new PKCS5S2ParametersGenerator(new SHA256Digest)
       pGen.init(key, salt, iterationCount)
 
@@ -143,10 +136,12 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
     }("Cannot generate key parameters")
 
   private val paramsWithIV: Crypto.Func[(Array[Byte], Array[Byte]), ParametersWithIV] =
-    Crypto{
+    Crypto {
       case (key: Array[Byte], iv: Array[Byte]) ⇒
         params
-          .andThen(Crypto.tryFn((kp: KeyParameter) ⇒ new ParametersWithIV(kp, iv))("Cannot generate key parameters with IV"))
+          .andThen(
+            Crypto.tryFn((kp: KeyParameter) ⇒ new ParametersWithIV(kp, iv))("Cannot generate key parameters with IV")
+          )
           .run(key)
     }
 
@@ -155,54 +150,53 @@ class AesCrypt(password: Array[Char], withIV: Boolean, config: AesConfig) extend
    * key Password
    * @return Optional IV and cipher parameters
    */
-  val extDataWithParams: Crypto.Func[Array[Byte],(Option[Array[Byte]], CipherParameters)] =
-    Crypto(key ⇒
-      if (withIV) {
-        val ivData = generateIV
+  val extDataWithParams: Crypto.Func[Array[Byte], (Option[Array[Byte]], CipherParameters)] =
+    Crypto(
+      key ⇒
+        if (withIV) {
+          val ivData = generateIV
 
-        // setup cipher parameters with key and IV
-        paramsWithIV(key, ivData).map(k ⇒ (Some(ivData), k))
-      } else {
-        params(key).map(k ⇒ (None, k))
-      }
+          // setup cipher parameters with key and IV
+          paramsWithIV(key, ivData).map(k ⇒ (Some(ivData), k))
+        } else {
+          params(key).map(k ⇒ (None, k))
+        }
     )
 
   private val detachDataAndGetParams: Crypto.Func[(Array[Byte], Array[Char], Array[Byte], Boolean), DataWithParams] =
-  Crypto{
-    case (data, password, salt, withIV) ⇒
-    if (withIV) {
-      for {
-        ivDataWithEncData ← detachIV(data -> IV_SIZE)
-        key ← initSecretKey(password -> salt)
-        // setup cipher parameters with key and IV
-        paramsWithIV ← paramsWithIV(key, ivDataWithEncData.ivData)
-      } yield DataWithParams(ivDataWithEncData.encData, paramsWithIV)
-    } else {
-      for {
-        key ← initSecretKey(password -> salt)
-        // setup cipher parameters with key
-        params ← params(key)
-      } yield DataWithParams(data, params)
+    Crypto {
+      case (data, password, salt, withIV) ⇒
+        if (withIV) {
+          for {
+            ivDataWithEncData ← detachIV(data -> IV_SIZE)
+            key ← initSecretKey(password -> salt)
+            // setup cipher parameters with key and IV
+            paramsWithIV ← paramsWithIV(key, ivDataWithEncData.ivData)
+          } yield DataWithParams(ivDataWithEncData.encData, paramsWithIV)
+        } else {
+          for {
+            key ← initSecretKey(password -> salt)
+            // setup cipher parameters with key
+            params ← params(key)
+          } yield DataWithParams(data, params)
+        }
     }
-  }
 
   val decrypt: Crypto.Func[Array[Byte], Array[Byte]] =
-    Crypto[Array[Byte], Array[Byte]] {
-      input: Array[Byte] ⇒
-        for {
-          dataWithParams ← detachDataAndGetParams((input, password, salt, withIV))
-          decData ← processData( (dataWithParams, None, /*encrypt =*/ false))
-        } yield decData
+    Crypto[Array[Byte], Array[Byte]] { input: Array[Byte] ⇒
+      for {
+        dataWithParams ← detachDataAndGetParams((input, password, salt, withIV))
+        decData ← processData((dataWithParams, None, /*encrypt =*/ false))
+      } yield decData
     }
 
   val encrypt: Crypto.Func[Array[Byte], Array[Byte]] =
-    Crypto {
-      input: Array[Byte] ⇒
-        for {
-          key ← initSecretKey(password -> salt)
-          extDataWithParams ← extDataWithParams(key)
-          encData ← processData((DataWithParams(input, extDataWithParams._2), extDataWithParams._1, /*encrypt =*/ true))
-        } yield encData
+    Crypto { input: Array[Byte] ⇒
+      for {
+        key ← initSecretKey(password -> salt)
+        extDataWithParams ← extDataWithParams(key)
+        encData ← processData((DataWithParams(input, extDataWithParams._2), extDataWithParams._1, /*encrypt =*/ true))
+      } yield encData
 
     }
 }

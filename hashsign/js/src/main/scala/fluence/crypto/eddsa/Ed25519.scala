@@ -30,7 +30,7 @@ class Ed25519(hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
   import CryptoJsHelpers._
 
   val sign: Crypto.Func[(KeyPair, ByteVector), Signature] =
-    Crypto{
+    Crypto {
       case (keyPair, message) ⇒
         for {
           hash ← JsCryptoHasher.hash(message, hasher)
@@ -47,35 +47,34 @@ class Ed25519(hasher: Option[Crypto.Hasher[Array[Byte], Array[Byte]]]) {
   val verify: Crypto.Func[(KeyPair.Public, Signature, ByteVector), Unit] =
     Crypto {
       case (
-        pubKey,
-        signature,
-        message
-        ) ⇒
-      for {
-        hash ← JsCryptoHasher.hash(message, hasher)
-        verify ← Crypto.tryUnit(
-          Supercop.verify(signature.sign.toJsBuffer, ByteVector(hash).toJsBuffer, pubKey.value.toJsBuffer)
-        )("Cannot verify message")
-        _ ← Either.cond(verify, (), CryptoError("Signature is not verified"))
-      } yield ()
+          pubKey,
+          signature,
+          message
+          ) ⇒
+        for {
+          hash ← JsCryptoHasher.hash(message, hasher)
+          verify ← Crypto.tryUnit(
+            Supercop.verify(signature.sign.toJsBuffer, ByteVector(hash).toJsBuffer, pubKey.value.toJsBuffer)
+          )("Cannot verify message")
+          _ ← Either.cond(verify, (), CryptoError("Signature is not verified"))
+        } yield ()
     }
 
   val generateKeyPair: Crypto.KeyPairGenerator =
-    Crypto[Option[Array[Byte]], KeyPair] {
-      input ⇒
-        for {
-          seed ← Crypto.tryUnit(input.map(ByteVector(_).toJsBuffer).getOrElse(Supercop.createSeed()))(
-            "Error on seed creation"
+    Crypto[Option[Array[Byte]], KeyPair] { input ⇒
+      for {
+        seed ← Crypto.tryUnit(input.map(ByteVector(_).toJsBuffer).getOrElse(Supercop.createSeed()))(
+          "Error on seed creation"
+        )
+        jsKeyPair ← Crypto.tryUnit(Supercop.createKeyPair(seed))("Error on key pair generation.")
+        keyPair ← Crypto.tryUnit(
+          KeyPair.fromByteVectors(
+            ByteVector.fromValidHex(jsKeyPair.publicKey.toString("hex")),
+            ByteVector.fromValidHex(jsKeyPair.secretKey.toString("hex"))
           )
-          jsKeyPair ← Crypto.tryUnit(Supercop.createKeyPair(seed))("Error on key pair generation.")
-          keyPair ← Crypto.tryUnit(
-            KeyPair.fromByteVectors(
-              ByteVector.fromValidHex(jsKeyPair.publicKey.toString("hex")),
-              ByteVector.fromValidHex(jsKeyPair.secretKey.toString("hex"))
-            )
-          )("Error on decoding public and secret keys")
-        } yield keyPair
-      }
+        )("Error on decoding public and secret keys")
+      } yield keyPair
+    }
 }
 
 object Ed25519 {
@@ -90,13 +89,13 @@ object Ed25519 {
         Signer(
           kp.publicKey,
           ed25519.sign.local(kp -> _)
-      ),
+        ),
       checker = pk ⇒
         SignatureChecker(
-            ed25519.verify.local{
-              case (signature, plain) ⇒ (pk, signature, plain)
-      }
-    )
+          ed25519.verify.local {
+            case (signature, plain) ⇒ (pk, signature, plain)
+          }
+        )
     )
 
 }

@@ -48,33 +48,34 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
   val HEXradix = 16
 
   /**
-    * Restores pair of keys from the known secret key.
-    * The public key will be the same each method call with the same secret key.
-    * sk secret key
-    * @return key pair
-    */
+   * Restores pair of keys from the known secret key.
+   * The public key will be the same each method call with the same secret key.
+   * sk secret key
+   * @return key pair
+   */
   val restorePairFromSecret: Crypto.Func[Secret, KeyPair] =
-    Crypto(sk ⇒
-    for {
-      ecSpec ← Either.fromOption(
-        Option(ECNamedCurveTable.getParameterSpec(curveType)),
-        CryptoError("Parameter spec for the curve is not available.")
-      )
-      keyPair ← Crypto.tryUnit {
-        val hex = sk.value.toHex
-        val d = new BigInteger(hex, HEXradix)
-        // to re-create public key from private we need to multiply known from curve point G with D (private key)
-        // result will be point Q (public key)
-        // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
-        val g = ecSpec.getG
-        val q = g.multiply(d)
-        val pk = ByteVector(q.getEncoded(true))
-        KeyPair.fromByteVectors(pk, sk.value)
-      }("Could not generate KeyPair from private key. Unexpected.")
-    } yield keyPair
+    Crypto(
+      sk ⇒
+        for {
+          ecSpec ← Either.fromOption(
+            Option(ECNamedCurveTable.getParameterSpec(curveType)),
+            CryptoError("Parameter spec for the curve is not available.")
+          )
+          keyPair ← Crypto.tryUnit {
+            val hex = sk.value.toHex
+            val d = new BigInteger(hex, HEXradix)
+            // to re-create public key from private we need to multiply known from curve point G with D (private key)
+            // result will be point Q (public key)
+            // https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm
+            val g = ecSpec.getG
+            val q = g.multiply(d)
+            val pk = ByteVector(q.getEncoded(true))
+            KeyPair.fromByteVectors(pk, sk.value)
+          }("Could not generate KeyPair from private key. Unexpected.")
+        } yield keyPair
     )
 
-  private def curveSpec: Crypto.Err[ECParameterSpec] =
+  private def curveSpec: Crypto.Result[ECParameterSpec] =
     Crypto.tryUnit(ECNamedCurveTable.getParameterSpec(curveType).asInstanceOf[ECParameterSpec])(
       "Cannot get curve parameters"
     )
@@ -85,32 +86,33 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
     )
 
   val generateKeyPair: Crypto.KeyPairGenerator =
-    Crypto[Option[Array[Byte]], KeyPair] {
-      input ⇒
-        for {
-          ecSpec ← Either.fromOption(
-            Option(ECNamedCurveTable.getParameterSpec(curveType)),
-            CryptoError("Parameter spec for the curve is not available.")
-          )
-          g ← getKeyPairGenerator
-          _ ← Crypto.tryUnit {
-            g.initialize(ecSpec, input.map(new SecureRandom(_)).getOrElse(new SecureRandom()))
-          }(s"Could not initialize KeyPairGenerator")
-          p ← Either.fromOption(Option(g.generateKeyPair()), CryptoError("Generated key pair is null"))
-          keyPair ← Crypto.tryUnit {
-            val pk = p.getPublic match {
-              case pk: ECPublicKey => ByteVector(p.getPublic.asInstanceOf[ECPublicKey].getQ.getEncoded(true))
-              case p => throw new ClassCastException(s"Cannot cast public key (${p.getClass}) to Ed25519PublicKeyParameters")
-            }
-            val sk = p.getPrivate match {
-              case sk: ECPrivateKey =>
-                val bg = p.getPrivate.asInstanceOf[ECPrivateKey].getS
-                ByteVector.fromValidHex(bg.toString(HEXradix))
-              case s => throw new ClassCastException(s"Cannot cast private key (${p.getClass}) to Ed25519PrivateKeyParameters")
-            }
-            KeyPair.fromByteVectors(pk, sk)
-          }("Could not generate KeyPair")
-        } yield keyPair
+    Crypto[Option[Array[Byte]], KeyPair] { input ⇒
+      for {
+        ecSpec ← Either.fromOption(
+          Option(ECNamedCurveTable.getParameterSpec(curveType)),
+          CryptoError("Parameter spec for the curve is not available.")
+        )
+        g ← getKeyPairGenerator
+        _ ← Crypto.tryUnit {
+          g.initialize(ecSpec, input.map(new SecureRandom(_)).getOrElse(new SecureRandom()))
+        }(s"Could not initialize KeyPairGenerator")
+        p ← Either.fromOption(Option(g.generateKeyPair()), CryptoError("Generated key pair is null"))
+        keyPair ← Crypto.tryUnit {
+          val pk = p.getPublic match {
+            case pk: ECPublicKey => ByteVector(p.getPublic.asInstanceOf[ECPublicKey].getQ.getEncoded(true))
+            case p =>
+              throw new ClassCastException(s"Cannot cast public key (${p.getClass}) to Ed25519PublicKeyParameters")
+          }
+          val sk = p.getPrivate match {
+            case sk: ECPrivateKey =>
+              val bg = p.getPrivate.asInstanceOf[ECPrivateKey].getS
+              ByteVector.fromValidHex(bg.toString(HEXradix))
+            case s =>
+              throw new ClassCastException(s"Cannot cast private key (${p.getClass}) to Ed25519PrivateKeyParameters")
+          }
+          KeyPair.fromByteVectors(pk, sk)
+        }("Could not generate KeyPair")
+      } yield keyPair
     }
 
   private def getKeyFactory =
@@ -124,11 +126,11 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
     )
 
   private val signMessage: Crypto.Func[(BigInteger, Array[Byte]), Array[Byte]] =
-    Crypto{
+    Crypto {
       case (
-        privateKey,
-        message
-        ) ⇒
+          privateKey,
+          message
+          ) ⇒
         for {
           ec ← curveSpec
           keySpec ← Crypto.tryUnit(new ECPrivateKeySpec(privateKey, ec))("Cannot read private key.")
@@ -147,24 +149,25 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
         } yield sign
     }
 
-
   val sign: Crypto.Func[(KeyPair, ByteVector), signature.Signature] =
     signMessage
       .map(bb ⇒ fluence.crypto.signature.Signature(ByteVector(bb)))
-      .local{
+      .local {
         case (keyPair, message) ⇒ (new BigInteger(keyPair.secretKey.value.toHex, HEXradix), message.toArray)
       }
 
   private val verifySign: Crypto.Func[(Array[Byte], Array[Byte], Array[Byte]), Unit] =
-    Crypto{
+    Crypto {
       case (
-        publicKey,
-        signature,
-        message,
-        ) ⇒
+          publicKey,
+          signature,
+          message
+          ) ⇒
         for {
           ec ← curveSpec
-          keySpec ← Crypto.tryUnit(new ECPublicKeySpec(ec.getCurve.decodePoint(publicKey), ec))("Cannot read public key")
+          keySpec ← Crypto.tryUnit(new ECPublicKeySpec(ec.getCurve.decodePoint(publicKey), ec))(
+            "Cannot read public key"
+          )
           keyFactory ← getKeyFactory
           signProvider ← getSignatureProvider
           _ ← Crypto.tryUnit(
@@ -184,12 +187,13 @@ class Ecdsa(curveType: String, scheme: String, hasher: Option[Crypto.Hasher[Arra
     }
 
   val verify: Crypto.Func[(KeyPair.Public, signature.Signature, ByteVector), Unit] =
-    verifySign.local{
+    verifySign.local {
       case (
-        publicKey,
-        signature,
-        message
-        ) ⇒ (publicKey.bytes, signature.bytes, message.toArray)
+          publicKey,
+          signature,
+          message
+          ) ⇒
+        (publicKey.bytes, signature.bytes, message.toArray)
     }
 }
 
@@ -211,19 +215,19 @@ object Ecdsa {
     signer = kp ⇒
       Signer(
         kp.publicKey,
-        Crypto {
-            input ⇒
-            ecdsa_secp256k1_sha256.sign(kp -> input)
+        Crypto { input ⇒
+          ecdsa_secp256k1_sha256.sign(kp -> input)
         }
-    ),
+      ),
     checker = pk ⇒
       SignatureChecker(
-        Crypto { case (
-          signature: fluence.crypto.signature.Signature,
-          plain: ByteVector
-          ) ⇒
-          ecdsa_secp256k1_sha256.verify(pk, signature, plain)
+        Crypto {
+          case (
+              signature: fluence.crypto.signature.Signature,
+              plain: ByteVector
+              ) ⇒
+            ecdsa_secp256k1_sha256.verify(pk, signature, plain)
         }
-  )
+      )
   )
 }
